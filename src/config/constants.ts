@@ -17,20 +17,49 @@ export const CONFERENCE_CONFIG = {
 
 /**
  * Centrally configured volunteer teams.
- * Easily replace or extend this list as confirmed by the TEDxGwarinpa organizing committee.
+ * Reflects actual confirmed TEDxGwarinpa community teams plus Website Team.
  */
 export const VOLUNTEER_TEAMS = [
-  "Logistics & Operations",
-  "Media, Comms & Marketing",
-  "Guest Experience & Protocol",
-  "Sponsorship & Partnerships",
-  "Speaker Relations & Curation",
-  "Technical, Stage & Production",
-  "Design & Brand Identity",
-  "General Volunteer Pool",
+  "Protocol/Ushering/Logistics Team",
+  "TEDxGwarinpa Prayer Team",
+  "Volunteer Management Team",
+  "Health and Welfare Team",
+  "Photography and Videography Team",
+  "Curation/Programs Team",
+  "Sponsorship and Partnership Team",
+  "TEDxGwarinpa Novelty Match ⚽",
+  "Public Relation (PR) Team",
+  "Technical/Sound Team",
+  "Website Team",
 ] as const;
 
 export type VolunteerTeam = (typeof VOLUNTEER_TEAMS)[number];
+
+/**
+ * Safe fallback helper if an existing profile's team was archived or is unavailable.
+ */
+export function getSafeVolunteerTeam(team?: string | null): string {
+  if (!team || typeof team !== "string" || !team.trim()) {
+    return "Volunteer Management Team";
+  }
+  return team.trim();
+}
+
+/**
+ * Provisional scoring configuration.
+ * The organizing committee has not yet finalized point policies;
+ * this structure serves as the configurable baseline.
+ */
+export const DEFAULT_SCORING_CONFIG = {
+  id: "provisional-config-01",
+  ticketsPerPoint: 2,
+  enableCarryover: true,
+  status: "draft" as "draft" | "active" | "archived",
+  label: "Provisional Demo Policy (Pending Final Committee Ratification)",
+  notes: "Provisional development ratio: 1 point per 2 verified tickets. Leadership agreement pending.",
+  updatedAt: "2026-10-18T12:00:00Z",
+  updatedBy: "Organizing Committee",
+};
 
 export const TICKET_TYPES = [
   "Standard Delegate",

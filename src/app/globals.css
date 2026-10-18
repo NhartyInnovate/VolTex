@@ -27,6 +27,160 @@ body {
   border-color: #2f2f37;
 }
 
+/* Restrained entrance animations */
+@keyframes subtleFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-subtle-fade-up {
+  opacity: 0;
+  animation: subtleFadeUp 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Navigation entrance */
+@keyframes navFadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-nav-in {
+  opacity: 0;
+  animation: navFadeDown 480ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+}
+
+/* Hero progressive text reveal */
+@keyframes heroMaskReveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-hero-line-1 {
+  opacity: 0;
+  animation: heroMaskReveal 700ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.animate-hero-line-2 {
+  opacity: 0;
+  animation: heroMaskReveal 700ms cubic-bezier(0.16, 1, 0.3, 1) 280ms both;
+}
+
+.animate-hero-sub {
+  opacity: 0;
+  animation: heroMaskReveal 700ms cubic-bezier(0.16, 1, 0.3, 1) 600ms both;
+}
+
+.animate-hero-cta-1 {
+  opacity: 0;
+  animation: heroMaskReveal 700ms cubic-bezier(0.16, 1, 0.3, 1) 760ms both;
+}
+
+.animate-hero-cta-2 {
+  opacity: 0;
+  animation: heroMaskReveal 700ms cubic-bezier(0.16, 1, 0.3, 1) 900ms both;
+}
+
+/* Signature editorial movement: line expansion and restrained light sweep */
+@keyframes accentExpand {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.animate-accent-expand {
+  transform-origin: left;
+  opacity: 0;
+  animation: accentExpand 750ms cubic-bezier(0.16, 1, 0.3, 1) 440ms both;
+}
+
+@keyframes editorialSweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(300%);
+    opacity: 0;
+  }
+}
+
+.animate-editorial-sweep {
+  opacity: 0;
+  animation: editorialSweep 1400ms cubic-bezier(0.2, 0.8, 0.4, 1) 1100ms both;
+}
+
+/* Modal and overlay animations */
+@keyframes backdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop {
+  animation: backdropFade 160ms ease-out forwards;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal {
+  animation: modalScaleIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger delay utility classes */
+.delay-75 {
+  animation-delay: 75ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+
 /* Clean, restrained scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
@@ -40,4 +194,16 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
+}
+
+/* Global accessibility: respects prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

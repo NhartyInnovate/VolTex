@@ -4,7 +4,7 @@
  * ==============================================================================
  * This file contains strictly realistic mock data to render the volunteer and
  * admin UI workflows before live Supabase connections are activated.
- * In Phase 4 & Phase 5, these will be replaced with real Supabase queries.
+ * Teams use the actual confirmed TEDxGwarinpa community teams.
  */
 
 import { LeaderboardEntry, ReferralRecord, UserProfile } from "@/types";
@@ -16,7 +16,7 @@ export const MOCK_VOLUNTEER_USER: UserProfile = {
   email: "amina.bello@tedxgwarinpa.org",
   fullName: "Amina Bello",
   phoneNumber: "+234 803 123 4567",
-  volunteerTeam: "Media, Comms & Marketing",
+  volunteerTeam: "Public Relation (PR) Team",
   role: "volunteer",
   createdAt: "2026-09-01T10:00:00Z",
 };
@@ -26,7 +26,7 @@ export const MOCK_ADMIN_USER: UserProfile = {
   email: "lead.admin@tedxgwarinpa.org",
   fullName: "Chidi Nnamdi",
   phoneNumber: "+234 809 987 6543",
-  volunteerTeam: "Technical, Stage & Production",
+  volunteerTeam: "Technical/Sound Team",
   role: "admin",
   createdAt: "2026-08-15T09:00:00Z",
 };
@@ -36,7 +36,7 @@ export const MOCK_VOLUNTEER_REFERRALS: ReferralRecord[] = [
     id: "ref-101",
     volunteerId: "vol-001-amina",
     volunteerName: "Amina Bello",
-    volunteerTeam: "Media, Comms & Marketing",
+    volunteerTeam: "Public Relation (PR) Team",
     buyerName: "Oluwaseun Adeleke",
     ticketType: "VIP Experience",
     ticketQuantity: 2,
@@ -52,7 +52,7 @@ export const MOCK_VOLUNTEER_REFERRALS: ReferralRecord[] = [
     id: "ref-102",
     volunteerId: "vol-001-amina",
     volunteerName: "Amina Bello",
-    volunteerTeam: "Media, Comms & Marketing",
+    volunteerTeam: "Public Relation (PR) Team",
     buyerName: "Fatima Ibrahim",
     ticketType: "Standard Delegate",
     ticketQuantity: 1,
@@ -68,7 +68,7 @@ export const MOCK_VOLUNTEER_REFERRALS: ReferralRecord[] = [
     id: "ref-103",
     volunteerId: "vol-001-amina",
     volunteerName: "Amina Bello",
-    volunteerTeam: "Media, Comms & Marketing",
+    volunteerTeam: "Public Relation (PR) Team",
     buyerName: "Emeka Okafor",
     ticketType: "Standard Delegate",
     ticketQuantity: 2,
@@ -81,7 +81,7 @@ export const MOCK_VOLUNTEER_REFERRALS: ReferralRecord[] = [
     id: "ref-104",
     volunteerId: "vol-001-amina",
     volunteerName: "Amina Bello",
-    volunteerTeam: "Media, Comms & Marketing",
+    volunteerTeam: "Public Relation (PR) Team",
     buyerName: "Zainab Mohammed",
     ticketType: "Student Pass (Discounted)",
     ticketQuantity: 1,
@@ -96,7 +96,7 @@ export const MOCK_VOLUNTEER_REFERRALS: ReferralRecord[] = [
     id: "ref-105",
     volunteerId: "vol-001-amina",
     volunteerName: "Amina Bello",
-    volunteerTeam: "Media, Comms & Marketing",
+    volunteerTeam: "Public Relation (PR) Team",
     buyerName: "Kelechi Umeh",
     ticketType: "Standard Delegate",
     ticketQuantity: 1,
@@ -116,7 +116,7 @@ export const MOCK_ADMIN_ALL_REFERRALS: ReferralRecord[] = [
     id: "ref-088",
     volunteerId: "vol-002-tunde",
     volunteerName: "Tunde Bakare",
-    volunteerTeam: "Logistics & Operations",
+    volunteerTeam: "Protocol/Ushering/Logistics Team",
     buyerName: "Zainab Mohammed",
     ticketType: "Student Pass (Discounted)",
     ticketQuantity: 1,
@@ -129,7 +129,7 @@ export const MOCK_ADMIN_ALL_REFERRALS: ReferralRecord[] = [
     id: "ref-089",
     volunteerId: "vol-003-ngozi",
     volunteerName: "Ngozi Eze",
-    volunteerTeam: "Sponsorship & Partnerships",
+    volunteerTeam: "Sponsorship and Partnership Team",
     buyerName: "Apex Capital Ventures (Group of 6)",
     ticketType: "Executive / Patron",
     ticketQuantity: 6,
@@ -142,7 +142,7 @@ export const MOCK_ADMIN_ALL_REFERRALS: ReferralRecord[] = [
     id: "ref-090",
     volunteerId: "vol-004-danladi",
     volunteerName: "Danladi Musa",
-    volunteerTeam: "Guest Experience & Protocol",
+    volunteerTeam: "Volunteer Management Team",
     buyerName: "Dr. Aliyu Garba",
     ticketType: "VIP Experience",
     ticketQuantity: 2,
@@ -154,13 +154,42 @@ export const MOCK_ADMIN_ALL_REFERRALS: ReferralRecord[] = [
     verifiedBy: "Chidi Nnamdi",
     createdAt: "2026-10-16T11:00:00Z",
   },
+  {
+    id: "ref-091",
+    volunteerId: "vol-009-victor",
+    volunteerName: "Victor Kalu",
+    volunteerTeam: "TEDxGwarinpa Novelty Match ⚽",
+    buyerName: "Novelty Match Supporters Club",
+    ticketType: "Standard Delegate",
+    ticketQuantity: 4,
+    buyerIdentifier: "NOV-MATCH-04",
+    status: "approved",
+    adminNotes: "Group purchase confirmed by Match Coordinator",
+    flaggedDuplicate: false,
+    verifiedAt: "2026-10-17T11:00:00Z",
+    verifiedBy: "Chidi Nnamdi",
+    createdAt: "2026-10-17T08:00:00Z",
+  },
+  {
+    id: "ref-092",
+    volunteerId: "vol-010-grace",
+    volunteerName: "Grace Danjuma",
+    volunteerTeam: "Health and Welfare Team",
+    buyerName: "MedFirst Clinic Reps",
+    ticketType: "VIP Experience",
+    ticketQuantity: 2,
+    buyerIdentifier: "MTR-VIP-99441",
+    status: "pending",
+    flaggedDuplicate: false,
+    createdAt: "2026-10-17T13:30:00Z",
+  },
 ];
 
 export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
   {
     volunteerId: "vol-003-ngozi",
     fullName: "Ngozi Eze",
-    volunteerTeam: "Sponsorship & Partnerships",
+    volunteerTeam: "Sponsorship and Partnership Team",
     verifiedTickets: 14,
     points: 7, // 14 / 2 = 7 pts
     carryoverTickets: 0,
@@ -169,7 +198,7 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
   {
     volunteerId: "vol-002-tunde",
     fullName: "Tunde Bakare",
-    volunteerTeam: "Logistics & Operations",
+    volunteerTeam: "Protocol/Ushering/Logistics Team",
     verifiedTickets: 11,
     points: 5, // 11 / 2 = 5 pts, 1 carryover
     carryoverTickets: 1,
@@ -178,7 +207,7 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
   {
     volunteerId: "vol-004-danladi",
     fullName: "Danladi Musa",
-    volunteerTeam: "Guest Experience & Protocol",
+    volunteerTeam: "Volunteer Management Team",
     verifiedTickets: 8,
     points: 4, // 8 / 2 = 4 pts
     carryoverTickets: 0,
@@ -187,46 +216,73 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
   {
     volunteerId: "vol-005-chioma",
     fullName: "Chioma Okoli",
-    volunteerTeam: "Speaker Relations & Curation",
+    volunteerTeam: "Curation/Programs Team",
     verifiedTickets: 7,
     points: 3, // 7 / 2 = 3 pts, 1 carryover
     carryoverTickets: 1,
     rank: 4,
   },
   {
+    volunteerId: "vol-009-victor",
+    fullName: "Victor Kalu",
+    volunteerTeam: "TEDxGwarinpa Novelty Match ⚽",
+    verifiedTickets: 4,
+    points: 2,
+    carryoverTickets: 0,
+    rank: 5,
+  },
+  {
     volunteerId: "vol-001-amina",
     fullName: "Amina Bello",
-    volunteerTeam: "Media, Comms & Marketing",
+    volunteerTeam: "Public Relation (PR) Team",
     verifiedTickets: 3,
     points: 1, // 3 / 2 = 1 pt, 1 carryover
     carryoverTickets: 1,
-    rank: 5,
+    rank: 6,
   },
   {
     volunteerId: "vol-006-ibrahim",
     fullName: "Ibrahim Sanusi",
-    volunteerTeam: "Technical, Stage & Production",
+    volunteerTeam: "Technical/Sound Team",
     verifiedTickets: 2,
     points: 1,
     carryoverTickets: 0,
-    rank: 6,
+    rank: 7,
   },
   {
     volunteerId: "vol-007-folake",
     fullName: "Folake Adeyemi",
-    volunteerTeam: "Design & Brand Identity",
+    volunteerTeam: "Photography and Videography Team",
     verifiedTickets: 1,
     points: 0, // 1 / 2 = 0 pts, 1 carryover
     carryoverTickets: 1,
-    rank: 7,
+    rank: 8,
   },
   {
     volunteerId: "vol-008-uchenna",
     fullName: "Uchenna Nwosu",
-    volunteerTeam: "General Volunteer Pool",
+    volunteerTeam: "Website Team",
     verifiedTickets: 0,
     points: 0,
     carryoverTickets: 0,
-    rank: 8,
+    rank: 9,
+  },
+  {
+    volunteerId: "vol-010-grace",
+    fullName: "Grace Danjuma",
+    volunteerTeam: "Health and Welfare Team",
+    verifiedTickets: 0,
+    points: 0,
+    carryoverTickets: 0,
+    rank: 10,
+  },
+  {
+    volunteerId: "vol-011-emmanuel",
+    fullName: "Emmanuel Adeleke",
+    volunteerTeam: "TEDxGwarinpa Prayer Team",
+    verifiedTickets: 0,
+    points: 0,
+    carryoverTickets: 0,
+    rank: 11,
   },
 ];

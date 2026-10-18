@@ -9,11 +9,11 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-[#09090b]/90 backdrop-blur-sm border-b border-zinc-800/80">
+    <header className="sticky top-0 z-50 bg-[#09090b]/90 backdrop-blur-sm border-b border-zinc-800/80 animate-nav-in">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-baseline gap-2">
+          <Link href="/" className="flex items-baseline gap-2 transition-opacity hover:opacity-90 active:scale-[0.99]">
             <span className="font-black tracking-tight text-xl">
               <span className="text-tedx-red">TEDx</span>
               <span className="text-white">Gwarinpa</span>
@@ -25,25 +25,25 @@ export function Navbar() {
           <nav className="hidden md:flex items-center gap-7 text-xs font-medium text-zinc-400">
             <Link
               href="/#overview"
-              className="hover:text-white transition-colors"
+              className="hover:text-white transition-colors duration-150"
             >
               How It Works
             </Link>
             <Link
               href="/#leaderboard"
-              className="hover:text-white transition-colors"
+              className="hover:text-white transition-colors duration-150"
             >
               Leaderboard & Scoring
             </Link>
             <Link
               href="/dashboard"
-              className="hover:text-white transition-colors"
+              className="hover:text-white transition-colors duration-150"
             >
               Volunteer Portal
             </Link>
             <Link
               href="/admin"
-              className="hover:text-white transition-colors text-zinc-500"
+              className="hover:text-white transition-colors duration-150 text-zinc-500"
             >
               Admin
             </Link>
@@ -55,13 +55,13 @@ export function Navbar() {
               href={CONFERENCE_CONFIG.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-zinc-300 hover:text-white px-3 py-1.5 transition-colors"
+              className="text-xs font-medium text-zinc-300 hover:text-white px-3 py-1.5 active:scale-[0.98] transition-all"
             >
               Buy Tickets
             </a>
             <Link
               href="/auth/register"
-              className="text-xs font-semibold px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white transition-colors"
+              className="text-xs font-semibold px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white transition-all shadow-xs"
             >
               Join Challenge
             </Link>
@@ -73,19 +73,19 @@ export function Navbar() {
               href={CONFERENCE_CONFIG.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-zinc-300 px-2 py-1"
+              className="text-xs font-medium text-zinc-300 px-2 py-1 active:scale-[0.98] transition-all"
             >
               Tickets
             </a>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 text-zinc-400 hover:text-white focus:outline-none"
+              className="p-1.5 text-zinc-400 hover:text-white active:scale-95 transition-all focus:outline-none"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? (
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 transition-transform duration-150" />
               ) : (
-                <Menu className="w-5 h-5" />
+                <Menu className="w-5 h-5 transition-transform duration-150" />
               )}
             </button>
           </div>
@@ -94,32 +94,32 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-zinc-800 bg-[#09090b] px-4 py-4 space-y-3 text-sm">
+        <div className="md:hidden border-b border-zinc-800 bg-[#09090b] px-4 py-4 space-y-3 text-sm animate-subtle-fade-up">
           <Link
             href="/#overview"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-zinc-300 hover:text-white py-1"
+            className="block text-zinc-300 hover:text-white py-1 transition-colors"
           >
             How It Works
           </Link>
           <Link
             href="/#leaderboard"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-zinc-300 hover:text-white py-1"
+            className="block text-zinc-300 hover:text-white py-1 transition-colors"
           >
             Leaderboard & Scoring
           </Link>
           <Link
             href="/dashboard"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-zinc-300 hover:text-white py-1"
+            className="block text-zinc-300 hover:text-white py-1 transition-colors"
           >
             Volunteer Portal
           </Link>
           <Link
             href="/admin"
             onClick={() => setMobileMenuOpen(false)}
-            className="block text-zinc-500 hover:text-zinc-300 py-1"
+            className="block text-zinc-500 hover:text-zinc-300 py-1 transition-colors"
           >
             Admin Verification
           </Link>
@@ -128,14 +128,14 @@ export function Navbar() {
             <Link
               href="/auth/register"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-center py-2 rounded bg-tedx-red text-white text-xs font-semibold"
+              className="text-center py-2 rounded bg-tedx-red text-white text-xs font-semibold active:scale-[0.98] transition-all"
             >
               Join the Challenge
             </Link>
             <Link
               href="/auth/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-center py-2 text-zinc-400 hover:text-white text-xs"
+              className="text-center py-2 text-zinc-400 hover:text-white text-xs active:scale-[0.98] transition-all"
             >
               Sign In
             </Link>

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
 import {
   MOCK_VOLUNTEER_USER,
   MOCK_VOLUNTEER_REFERRALS,
@@ -10,30 +9,13 @@ import {
   CONFERENCE_CONFIG,
   PROMOTIONAL_TEMPLATES,
   TICKET_TYPES,
+  getSafeVolunteerTeam,
 } from "@/config/constants";
 import { calculateVolunteerSummary } from "@/lib/scoring";
 import { ReferralRecord } from "@/types";
 import { formatDateTime } from "@/lib/utils";
-import {
-  Trophy,
-  Ticket,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  PlusCircle,
-  Copy,
-  Check,
-  Share2,
-  ExternalLink,
-  Users,
-  Sparkles,
-  Info,
-  Layers,
-  Phone,
-  Mail,
-  X,
-} from "lucide-react";
+import { triggerConfetti } from "@/lib/confetti";
+import { Copy, Check, X } from "lucide-react";
 
 export default function VolunteerDashboardPage() {
   const [referrals, setReferrals] = useState<ReferralRecord[]>(
@@ -41,6 +23,7 @@ export default function VolunteerDashboardPage() {
   );
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form State
@@ -48,9 +31,8 @@ export default function VolunteerDashboardPage() {
   const [formTicketType, setFormTicketType] = useState<string>(TICKET_TYPES[0]);
   const [formQuantity, setFormQuantity] = useState<number>(1);
   const [formIdentifier, setFormIdentifier] = useState("");
-  const [formSuccessMessage, setFormSuccessMessage] = useState<string | null>(
-    null
-  );
+  const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null);
+  const [formSuccessState, setFormSuccessState] = useState(false);
 
   // Compute live scoring from current submissions
   const summary = useMemo(() => {
@@ -67,242 +49,338 @@ export default function VolunteerDashboardPage() {
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2500);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   // Handle submission of new referral claim
   const handleCreateReferral = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrorMessage(null);
 
+    const trimmedBuyer = formBuyerName.trim();
+    if (!trimmedBuyer) {
+      setFormErrorMessage("Buyer name is required.");
+      return;
+    }
+
+    const safeQty = Math.min(50, Math.max(1, Number(formQuantity) || 1));
     const normalizedIdentifier = formIdentifier.toLowerCase().trim();
-    const normalizedBuyerName = formBuyerName.toLowerCase().trim();
+    const normalizedBuyerName = trimmedBuyer.toLowerCase();
 
-    // Check 1: Reliable identifier match
-    const matchedByIdentifier = Boolean(
-      normalizedIdentifier &&
-        referrals.some(
-          (r) =>
-            r.buyerIdentifier &&
-            r.buyerIdentifier.toLowerCase().trim() === normalizedIdentifier
-        )
-    );
-
-    // Check 2: Buyer name match (flagged for manual review only)
-    const matchedByName = Boolean(
-      normalizedBuyerName &&
-        referrals.some(
-          (r) => r.buyerName.toLowerCase().trim() === normalizedBuyerName
-        )
-    );
-
-    const isDuplicate = matchedByIdentifier || matchedByName;
-    const duplicateReason = matchedByIdentifier
-      ? "Purchase identifier matches existing referral claim"
-      : matchedByName
-      ? "Matching buyer name detected; requires organizer reconciliation"
-      : undefined;
-
-    const newRecord: ReferralRecord = {
-      id: `ref-local-${Date.now()}`,
-      volunteerId: MOCK_VOLUNTEER_USER.id,
-      volunteerName: MOCK_VOLUNTEER_USER.fullName,
-      volunteerTeam: MOCK_VOLUNTEER_USER.volunteerTeam,
-      buyerName: formBuyerName,
-      ticketType: formTicketType,
-      ticketQuantity: Math.min(50, Math.max(1, Number(formQuantity))),
-      buyerIdentifier: formIdentifier,
-      status: "pending",
-      flaggedDuplicate: isDuplicate,
-      duplicateReason,
-      adminNotes: isDuplicate ? `Flagged: ${duplicateReason}` : undefined,
-      createdAt: new Date().toISOString(),
-    };
-
-    setReferrals([newRecord, ...referrals]);
-    setFormSuccessMessage(
-      isDuplicate
-        ? `Referral claim submitted! Note: ${duplicateReason}. Flagged for organizer review.`
-        : "Referral claim submitted successfully! Status is now Pending verification against Meeteor Hub."
-    );
-
-    // Reset fields
-    setFormBuyerName("");
-    setFormIdentifier("");
-    setFormQuantity(1);
+    setIsSubmitting(true);
 
     setTimeout(() => {
-      setFormSuccessMessage(null);
-      setIsSubmitModalOpen(false);
-    }, 2000);
+      // Check 1: Reliable identifier match
+      const matchedByIdentifier = Boolean(
+        normalizedIdentifier &&
+          referrals.some(
+            (r) =>
+              r.buyerIdentifier &&
+              r.buyerIdentifier.toLowerCase().trim() === normalizedIdentifier
+          )
+      );
+
+      // Check 2: Buyer name match (flagged for manual review only)
+      const matchedByName = Boolean(
+        normalizedBuyerName &&
+          referrals.some(
+            (r) => r.buyerName.toLowerCase().trim() === normalizedBuyerName
+          )
+      );
+
+      const isDuplicate = matchedByIdentifier || matchedByName;
+      const duplicateReason = matchedByIdentifier
+        ? "Purchase identifier matches existing referral claim"
+        : matchedByName
+        ? "Matching buyer name detected; requires organizer reconciliation"
+        : undefined;
+
+      const newRecord: ReferralRecord = {
+        id: `ref-local-${Date.now()}`,
+        volunteerId: MOCK_VOLUNTEER_USER.id,
+        volunteerName: MOCK_VOLUNTEER_USER.fullName,
+        volunteerTeam: MOCK_VOLUNTEER_USER.volunteerTeam,
+        buyerName: trimmedBuyer,
+        ticketType: formTicketType,
+        ticketQuantity: safeQty,
+        buyerIdentifier: formIdentifier.trim(),
+        status: "pending",
+        flaggedDuplicate: isDuplicate,
+        duplicateReason,
+        adminNotes: isDuplicate ? `Flagged: ${duplicateReason}` : undefined,
+        createdAt: new Date().toISOString(),
+      };
+
+      setReferrals((prev) => [newRecord, ...prev]);
+      setIsSubmitting(false);
+      setFormSuccessState(true);
+
+      // Trigger celebratory confetti burst ONLY upon successful submission
+      triggerConfetti({ type: "referral" });
+
+      // Reset form input fields
+      setFormBuyerName("");
+      setFormIdentifier("");
+      setFormQuantity(1);
+    }, 300);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* 1. Header Banner & Volunteer Identity */}
-      <div className="tedx-surface rounded-2xl p-6 sm:p-8 border-zinc-800 bg-gradient-to-r from-zinc-950 via-zinc-900 to-black relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-40 bg-tedx-red/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="space-y-3 relative z-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tedx-red/15 border border-tedx-red/30 text-xs font-bold text-tedx-lightred uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              Volunteer Portal Preview
-            </span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-              {MOCK_VOLUNTEER_USER.volunteerTeam}
-            </span>
-          </div>
-
-          <h1 className="text-2xl sm:text-4xl font-black text-white">
-            Welcome, {MOCK_VOLUNTEER_USER.fullName}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+      {/* 1. Page Header & Volunteer Identity */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-800/80 pb-6 animate-subtle-fade-up">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Volunteer Dashboard
           </h1>
-
-          <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-400">
-            <span className="flex items-center gap-1">
-              <Mail className="w-3.5 h-3.5 text-zinc-500" />
-              {MOCK_VOLUNTEER_USER.email}
-            </span>
-            <span className="flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-zinc-500" />
-              {MOCK_VOLUNTEER_USER.phoneNumber}
-            </span>
-            <span className="flex items-center gap-1 text-tedx-lightred">
-              <Trophy className="w-3.5 h-3.5" />
-              Leaderboard Rank: #5
-            </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mt-1">
+            <span className="text-zinc-200 font-medium">{MOCK_VOLUNTEER_USER.fullName}</span>
+            <span>·</span>
+            <span>{getSafeVolunteerTeam(MOCK_VOLUNTEER_USER.volunteerTeam)}</span>
+            <span>·</span>
+            <span className="text-zinc-500 font-mono">Rank #6</span>
           </div>
         </div>
 
-        {/* Quick Action Button */}
-        <div className="relative z-10 shrink-0 flex flex-col sm:flex-row gap-3">
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsSubmitModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-tedx-red hover:bg-tedx-darkred text-white text-sm font-bold shadow-tedx transition-all"
+            onClick={() => {
+              setFormSuccessState(false);
+              setFormErrorMessage(null);
+              setIsSubmitModalOpen(true);
+            }}
+            className="text-xs font-semibold px-3.5 py-2 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white transition-all shadow-xs"
           >
-            <PlusCircle className="w-4 h-4" />
-            Report Ticket Referral
+            Submit Referral
           </button>
         </div>
       </div>
 
-      {/* 2. Key Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Essential Metrics Only with Staggered Entrance */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Points */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800 relative overflow-hidden group hover:border-tedx-red/40 transition-all">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Points Earned</span>
-            <Trophy className="w-4 h-4 text-tedx-red" />
+        <div className="border border-zinc-800/80 rounded p-4 bg-[#111114] animate-subtle-fade-up delay-75 hover:border-zinc-700/80 transition-colors">
+          <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+            Points Earned
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-white">
-              {summary.points}
-            </span>
-            <span className="text-xs text-zinc-400 font-semibold">pts</span>
+          <div className="mt-2 text-2xl font-bold font-mono text-white">
+            {summary.points} <span className="text-xs font-normal text-zinc-500">pts</span>
           </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            1 point awarded per 2 verified tickets
-          </p>
+          <div className="text-[11px] text-zinc-500 mt-1">
+            Provisional rule: 1 pt per 2 verified tickets
+          </div>
         </div>
 
         {/* Verified Tickets */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Verified Paid Tickets</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="border border-zinc-800/80 rounded p-4 bg-[#111114] animate-subtle-fade-up delay-150 hover:border-zinc-700/80 transition-colors">
+          <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+            Verified Tickets
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-emerald-400">
-              {summary.approvedTickets}
-            </span>
-            <span className="text-xs text-zinc-400 font-semibold">tickets</span>
+          <div className="mt-2 text-2xl font-bold font-mono text-zinc-200">
+            {summary.approvedTickets}
+            {summary.carryoverTickets > 0 && (
+              <span className="text-xs font-normal text-zinc-400 ml-2">
+                (+{summary.carryoverTickets} carryover)
+              </span>
+            )}
           </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
+          <div className="text-[11px] text-zinc-500 mt-1">
             Confirmed with Meeteor records
-          </p>
+          </div>
         </div>
 
-        {/* Carryover Ticket */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800 relative overflow-hidden group hover:border-amber-500/40 transition-all">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Odd Carryover</span>
-            <Layers className="w-4 h-4 text-amber-400" />
+        {/* Pending Referrals */}
+        <div className="border border-zinc-800/80 rounded p-4 bg-[#111114] animate-subtle-fade-up delay-200 hover:border-zinc-700/80 transition-colors">
+          <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+            Pending Review
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-amber-400">
-              +{summary.carryoverTickets}
-            </span>
-            <span className="text-xs text-zinc-400 font-semibold">
-              carryover
-            </span>
+          <div className="mt-2 text-2xl font-bold font-mono text-zinc-200">
+            {summary.pendingTickets} <span className="text-xs font-normal text-zinc-500">tickets</span>
           </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            {summary.carryoverTickets === 1
-              ? "Next verified ticket awards 1 point!"
-              : "Even count, ready for next pair"}
-          </p>
-        </div>
-
-        {/* Pending Tickets */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800 relative overflow-hidden group hover:border-zinc-700 transition-all">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Pending Review</span>
-            <Clock className="w-4 h-4 text-zinc-400" />
+          <div className="text-[11px] text-zinc-500 mt-1">
+            Awaiting admin reconciliation
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-zinc-300">
-              {summary.pendingTickets}
-            </span>
-            <span className="text-xs text-zinc-400 font-semibold">tickets</span>
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            Awaiting administrator verification
-          </p>
         </div>
       </div>
 
-      {/* 3. Promotional Resources & Ready-to-Share Outreach Kit */}
-      <div className="tedx-surface rounded-2xl p-6 sm:p-8 border-zinc-800 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+      {/* 3. Official Conference Ticket Link */}
+      <div className="border border-zinc-800/80 rounded p-4 bg-[#111114] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-subtle-fade-up delay-200">
+        <div>
+          <div className="font-semibold text-zinc-200">Official Conference Ticket Link</div>
+          <div className="text-zinc-500 text-[11px] mt-0.5">
+            Share this link with your network to purchase tickets on Meeteor.
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-zinc-400 text-[11px] truncate max-w-[240px] sm:max-w-[320px] bg-[#09090b] px-2.5 py-1.5 rounded border border-zinc-800">
+            {CONFERENCE_CONFIG.ticketUrl}
+          </span>
+          <button
+            onClick={() => handleCopy("ticket-url", CONFERENCE_CONFIG.ticketUrl)}
+            aria-label="Copy official conference ticket link"
+            className="shrink-0 text-xs font-medium px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 transition-all flex items-center gap-1"
+          >
+            {copiedId === "ticket-url" ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-zinc-200" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                Copy
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Referral History Table */}
+      <div className="space-y-4 animate-subtle-fade-up delay-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold text-tedx-red mb-1">
-              <Share2 className="w-3.5 h-3.5" />
-              Volunteer Outreach Kit
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white">
-              Ready-to-Share Promotional Resources
+            <h2 className="text-base font-bold text-white tracking-tight">
+              Referral History
             </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Copy pre-drafted invite messages or send them directly to WhatsApp groups and contacts.
+            <p className="text-[11px] text-zinc-500">
+              Submitted ticket claims and admin verification status.
             </p>
           </div>
 
-          {/* Quick Copy Link Box */}
-          <div className="flex items-center gap-2 bg-black border border-zinc-800 rounded-xl p-2 shrink-0">
-            <div className="text-xs text-zinc-400 font-mono truncate max-w-[200px] sm:max-w-[260px] pl-2">
-              {CONFERENCE_CONFIG.ticketUrl}
-            </div>
-            <button
-              onClick={() =>
-                handleCopy("official-ticket-url", CONFERENCE_CONFIG.ticketUrl)
-              }
-              className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors"
-            >
-              {copiedId === "official-ticket-url" ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy Link
-                </>
-              )}
-            </button>
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1 text-xs">
+            {["all", "approved", "pending", "rejected"].map((tab) => {
+              const count =
+                tab === "all"
+                  ? referrals.length
+                  : referrals.filter((r) => r.status === tab).length;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`px-2.5 py-1 rounded capitalize transition-colors ${
+                    statusFilter === tab
+                      ? "bg-zinc-800 text-white font-medium"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  {tab} ({count})
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Templates Grid */}
+        {/* Table */}
+        <div className="border border-zinc-800/80 rounded bg-[#111114] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-[#0e0e11]">
+                  <th className="py-2.5 px-4">Buyer Name</th>
+                  <th className="py-2.5 px-4">Ticket Type</th>
+                  <th className="py-2.5 px-4 text-center">Qty</th>
+                  <th className="py-2.5 px-4">Identifier / Ref</th>
+                  <th className="py-2.5 px-4">Status & Feedback</th>
+                  <th className="py-2.5 px-4">Notes</th>
+                  <th className="py-2.5 px-4 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60 font-sans">
+                {filteredReferrals.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-zinc-500">
+                      No referrals found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredReferrals.map((r) => (
+                    <tr key={r.id} className="hover:bg-zinc-800/20 transition-colors">
+                      <td className="py-3 px-4 font-medium text-zinc-200">
+                        {r.buyerName}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-400">
+                        {r.ticketType}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-medium text-zinc-200">
+                        {r.ticketQuantity}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-zinc-400 text-[11px]">
+                        <div>{r.buyerIdentifier || "—"}</div>
+                        {r.flaggedDuplicate && (
+                          <div className="text-[10px] text-amber-500 mt-0.5">
+                            Duplicate flagged
+                          </div>
+                        )}
+                      </td>
+                      {/* Status with verified feedback */}
+                      <td className="py-3 px-4">
+                        {r.status === "approved" && (
+                          <div>
+                            <span
+                              title="Referral verified."
+                              className="text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded text-[11px] font-medium"
+                            >
+                              Approved
+                            </span>
+                            <span className="block text-[10px] text-zinc-500 font-sans mt-0.5">
+                              Referral verified.
+                            </span>
+                          </div>
+                        )}
+                        {r.status === "pending" && (
+                          <div>
+                            <span
+                              title="Awaiting verification."
+                              className="text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded text-[11px] font-medium"
+                            >
+                              Pending
+                            </span>
+                            <span className="block text-[10px] text-zinc-500 font-sans mt-0.5">
+                              Awaiting verification.
+                            </span>
+                          </div>
+                        )}
+                        {r.status === "rejected" && (
+                          <div>
+                            <span
+                              title="Referral not approved."
+                              className="text-red-400 bg-red-950/40 border border-red-800/40 px-2 py-0.5 rounded text-[11px] font-medium"
+                            >
+                              Rejected
+                            </span>
+                            <span className="block text-[10px] text-zinc-500 font-sans mt-0.5">
+                              Referral not approved.
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 text-[11px] max-w-xs truncate">
+                        {r.adminNotes || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-zinc-500 text-[11px]">
+                        {formatDateTime(r.createdAt)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Promotional Templates */}
+      <div className="space-y-4 pt-4 border-t border-zinc-800/80">
+        <div>
+          <h2 className="text-base font-bold text-white tracking-tight">
+            Promotional Templates
+          </h2>
+          <p className="text-[11px] text-zinc-500">
+            Pre-written messages tailored for direct outreach and group sharing.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {PROMOTIONAL_TEMPLATES.map((tpl) => {
             const compiledMessage = tpl.content(
@@ -317,46 +395,41 @@ export default function VolunteerDashboardPage() {
             return (
               <div
                 key={tpl.id}
-                className="bg-black/60 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-zinc-700 transition-colors"
+                className="border border-zinc-800/80 rounded p-4 bg-[#111114] space-y-3 flex flex-col justify-between"
               >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-tedx-lightred">
-                      {tpl.channel}
-                    </span>
-                    <span className="text-xs text-zinc-400 font-medium">
-                      {tpl.title}
-                    </span>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-zinc-200">
+                    {tpl.channel}
                   </div>
-                  <p className="text-xs text-zinc-300 leading-relaxed font-sans line-clamp-4 bg-zinc-950/80 p-3 rounded-lg border border-zinc-900">
-                    &ldquo;{compiledMessage}&rdquo;
+                  <p className="text-xs text-zinc-400 leading-relaxed bg-[#09090b] p-3 rounded border border-zinc-800/60 font-sans">
+                    {compiledMessage}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/80">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60 text-xs">
                   <a
                     href={whatsappShareUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-800/40 hover:bg-emerald-900/40 transition-colors"
+                    className="text-zinc-300 hover:text-white active:scale-[0.98] transition-all underline underline-offset-4"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
-                    Share on WhatsApp
+                    Share on WhatsApp ↗
                   </a>
 
                   <button
                     onClick={() => handleCopy(tpl.id, compiledMessage)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-colors"
+                    aria-label={`Copy ${tpl.channel} text`}
+                    className="text-xs font-medium px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 transition-all flex items-center gap-1"
                   >
                     {isCopied ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        Copied Text
+                        <Check className="w-3.5 h-3.5 text-zinc-200" />
+                        Copied
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        Copy Message
+                        Copy text
                       </>
                     )}
                   </button>
@@ -367,260 +440,151 @@ export default function VolunteerDashboardPage() {
         </div>
       </div>
 
-      {/* 4. Referral Submissions History Table */}
-      <div className="tedx-surface rounded-2xl border-zinc-800 overflow-hidden shadow-xl space-y-4 p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-white">
-              Your Referral Submissions
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Keep track of buyer reports and review verification decisions from event admins.
-            </p>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-1 bg-black p-1 rounded-xl border border-zinc-800 self-start sm:self-auto text-xs">
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
-                statusFilter === "all"
-                  ? "bg-zinc-800 text-white font-bold"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              All ({referrals.length})
-            </button>
-            <button
-              onClick={() => setStatusFilter("approved")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
-                statusFilter === "approved"
-                  ? "bg-emerald-950 text-emerald-300 font-bold border border-emerald-800/50"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Approved ({referrals.filter((r) => r.status === "approved").length})
-            </button>
-            <button
-              onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
-                statusFilter === "pending"
-                  ? "bg-amber-950 text-amber-300 font-bold border border-amber-800/50"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Pending ({referrals.filter((r) => r.status === "pending").length})
-            </button>
-            <button
-              onClick={() => setStatusFilter("rejected")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
-                statusFilter === "rejected"
-                  ? "bg-red-950 text-red-300 font-bold border border-red-800/50"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Rejected ({referrals.filter((r) => r.status === "rejected").length})
-            </button>
-          </div>
-        </div>
-
-        {/* Table Content */}
-        <div className="overflow-x-auto rounded-xl border border-zinc-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[11px] font-bold tracking-wider border-b border-zinc-800">
-              <tr>
-                <th className="py-3.5 px-4 sm:px-6">Buyer Name</th>
-                <th className="py-3.5 px-4 sm:px-6">Ticket Type</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Quantity</th>
-                <th className="py-3.5 px-4 sm:px-6">Identifier / Ref</th>
-                <th className="py-3.5 px-4 sm:px-6">Status</th>
-                <th className="py-3.5 px-4 sm:px-6">Admin Note</th>
-                <th className="py-3.5 px-4 sm:px-6 text-right">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60 bg-zinc-950/40">
-              {filteredReferrals.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-zinc-500 text-xs">
-                    No referrals found for this filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredReferrals.map((r) => (
-                  <tr key={r.id} className="hover:bg-zinc-900/40 transition-colors">
-                    <td className="py-3.5 px-4 sm:px-6 font-semibold text-white">
-                      {r.buyerName}
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6 text-zinc-300 text-xs">
-                      {r.ticketType}
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6 text-center font-mono font-bold text-white">
-                      {r.ticketQuantity}
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6 text-xs text-zinc-400 font-mono">
-                      {r.buyerIdentifier || "—"}
-                      {r.flaggedDuplicate && (
-                        <span className="block mt-1 text-[10px] text-amber-400 font-sans font-bold flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" /> Duplicate Flagged
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6">
-                      {r.status === "approved" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
-                          <CheckCircle2 className="w-3 h-3" /> Approved
-                        </span>
-                      )}
-                      {r.status === "pending" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/60 text-amber-400 border border-amber-800/60">
-                          <Clock className="w-3 h-3" /> Pending
-                        </span>
-                      )}
-                      {r.status === "rejected" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-950/60 text-red-400 border border-red-800/60">
-                          <XCircle className="w-3 h-3" /> Rejected
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6 text-xs text-zinc-400 max-w-xs truncate">
-                      {r.adminNotes || "—"}
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6 text-right text-xs text-zinc-500 font-mono">
-                      {formatDateTime(r.createdAt)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 5. Referral Submission Modal */}
+      {/* 6. Referral Submission Modal */}
       {isSubmitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="tedx-surface rounded-2xl max-w-lg w-full p-6 sm:p-8 border-zinc-700 shadow-2xl relative space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-[#111114] border border-zinc-800 rounded max-w-md w-full p-6 space-y-5 relative animate-modal shadow-2xl">
             <button
               onClick={() => setIsSubmitModalOpen(false)}
-              className="absolute top-5 right-5 text-zinc-400 hover:text-white"
-              aria-label="Close modal"
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-300 active:scale-95 transition-all"
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold text-tedx-red mb-1">
-                <Ticket className="w-3.5 h-3.5" />
-                Referral Reporting Form
-              </div>
-              <h3 className="text-xl font-black text-white">
-                Submit Buyer Referral Claim
+              <h3 className="text-base font-bold text-white">
+                Submit Referral
               </h3>
               <p className="text-xs text-zinc-400 mt-1">
-                Submit the buyer&apos;s details. Once approved against Meeteor records, points will be credited to your standing.
+                Enter buyer details as registered on Meeteor. Submissions are reviewed by event organizers.
               </p>
             </div>
 
-            {formSuccessMessage && (
-              <div className="bg-emerald-950/60 border border-emerald-800 text-emerald-300 p-3 rounded-xl text-xs flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>{formSuccessMessage}</div>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateReferral} className="space-y-4">
-              {/* Buyer Name */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                  Buyer&apos;s Full Name (as registered on Meeteor) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Babatunde Lawal"
-                  value={formBuyerName}
-                  onChange={(e) => setFormBuyerName(e.target.value)}
-                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-tedx-red transition-colors"
-                />
-              </div>
-
-              {/* Ticket Type & Quantity */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                    Ticket Type *
-                  </label>
-                  <select
-                    value={formTicketType}
-                    onChange={(e) => setFormTicketType(e.target.value)}
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-tedx-red transition-colors"
-                  >
-                    {TICKET_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+            {formSuccessState ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="space-y-4 py-2 animate-subtle-fade-up text-xs"
+              >
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-base">
+                    Referral submitted.
+                  </h4>
+                  <p className="text-zinc-300">
+                    Your referral is awaiting verification.
+                  </p>
                 </div>
 
+                <div className="border-t border-zinc-800/80 pt-2.5 text-zinc-400 text-[11px] leading-relaxed">
+                  Submissions do not award points immediately. Points will be automatically credited once verified against Meeteor Hub records.
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setFormSuccessState(false);
+                      setIsSubmitModalOpen(false);
+                    }}
+                    className="px-4 py-2 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-white text-xs font-semibold transition-all"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleCreateReferral} className="space-y-4 text-xs">
+                {formErrorMessage && (
+                  <div
+                    role="alert"
+                    className="border border-red-800/60 bg-red-950/40 text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
+                  >
+                    {formErrorMessage}
+                  </div>
+                )}
+
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                    Ticket Quantity *
+                  <label className="block font-medium text-zinc-300 mb-1">
+                    Buyer Full Name *
                   </label>
                   <input
-                    type="number"
-                    min="1"
-                    max="50"
+                    type="text"
                     required
-                    value={formQuantity}
-                    onChange={(e) => setFormQuantity(parseInt(e.target.value) || 1)}
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-tedx-red transition-colors"
+                    placeholder="e.g. Babatunde Lawal"
+                    value={formBuyerName}
+                    onChange={(e) => setFormBuyerName(e.target.value)}
+                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
                   />
                 </div>
-              </div>
 
-              {/* Additional Identifier */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                  Additional Identifier (Order #, Email, or Buyer Phone)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. MTR-TX-10294 or buyer@company.com"
-                  value={formIdentifier}
-                  onChange={(e) => setFormIdentifier(e.target.value)}
-                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-tedx-red transition-colors"
-                />
-                <span className="text-[10px] text-zinc-500 block mt-1">
-                  Helps event admins rapidly reconcile your claim with Meeteor Hub. Duplicate codes are flagged for review.
-                </span>
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-medium text-zinc-300 mb-1">
+                      Ticket Type *
+                    </label>
+                    <select
+                      value={formTicketType}
+                      onChange={(e) => setFormTicketType(e.target.value)}
+                      className="w-full bg-[#09090b] border border-zinc-800 rounded px-2.5 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+                    >
+                      {TICKET_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Duplicate Protection Note */}
-              <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800 text-[11px] text-zinc-400 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-tedx-red shrink-0 mt-0.5" />
-                <span>
-                  All submissions are initially marked as <strong className="text-amber-400">Pending</strong>. Points are calculated only after administrator approval.
-                </span>
-              </div>
+                  <div>
+                    <label className="block font-medium text-zinc-300 mb-1">
+                      Quantity *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      required
+                      value={formQuantity}
+                      onChange={(e) => setFormQuantity(parseInt(e.target.value) || 1)}
+                      className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+                    />
+                  </div>
+                </div>
 
-              {/* Submit Button */}
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsSubmitModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-tedx-red hover:bg-tedx-darkred text-white text-xs font-bold shadow-tedx transition-all"
-                >
-                  Submit for Verification
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="block font-medium text-zinc-300 mb-1">
+                    Buyer Identifier / Order Reference
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Order ID, phone, or email"
+                    value={formIdentifier}
+                    onChange={(e) => setFormIdentifier(e.target.value)}
+                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                  />
+                  <span className="text-[11px] text-zinc-500 block mt-1">
+                    Used by admins to match records on Meeteor Hub.
+                  </span>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSubmitModalOpen(false)}
+                    className="px-3.5 py-2 rounded text-zinc-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit Referral"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

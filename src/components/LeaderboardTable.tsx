@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { LeaderboardEntry } from "@/types";
-import { VOLUNTEER_TEAMS } from "@/config/constants";
+import { VOLUNTEER_TEAMS, getSafeVolunteerTeam } from "@/config/constants";
 import { Search } from "lucide-react";
 
 interface LeaderboardTableProps {
@@ -80,7 +80,7 @@ export function LeaderboardTable({ entries, isDemoData = true }: LeaderboardTabl
                 filteredEntries.map((row) => (
                   <tr
                     key={row.volunteerId}
-                    className="hover:bg-zinc-800/30 transition-colors"
+                    className="hover:bg-zinc-800/30 transition-colors duration-150"
                   >
                     {/* Rank */}
                     <td className="py-3 px-4 text-center font-mono font-medium">
@@ -97,13 +97,13 @@ export function LeaderboardTable({ entries, isDemoData = true }: LeaderboardTabl
                         {row.fullName}
                       </div>
                       <div className="sm:hidden text-[11px] text-zinc-500 mt-0.5">
-                        {row.volunteerTeam}
+                        {getSafeVolunteerTeam(row.volunteerTeam)}
                       </div>
                     </td>
 
                     {/* Team */}
                     <td className="py-3 px-4 hidden sm:table-cell text-zinc-400">
-                      {row.volunteerTeam}
+                      {getSafeVolunteerTeam(row.volunteerTeam)}
                     </td>
 
                     {/* Verified Tickets */}
@@ -133,7 +133,7 @@ export function LeaderboardTable({ entries, isDemoData = true }: LeaderboardTabl
             {isDemoData ? "Sample preview data. " : ""}
             Rankings update automatically upon admin verification against Meeteor Hub.
           </span>
-          <span className="text-zinc-400">1 point per 2 verified tickets</span>
+          <span className="text-zinc-400">Provisional policy: 1 pt per 2 verified tickets</span>
         </div>
       </div>
     </div>

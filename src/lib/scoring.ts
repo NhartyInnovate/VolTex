@@ -1,19 +1,26 @@
 import { CONFERENCE_CONFIG } from "@/config/constants";
-import { ReferralRecord, ScoringSummary } from "@/types";
+import { ReferralRecord, ScoringConfig, ScoringSummary } from "@/types";
 
 /**
  * Calculates points and carryovers from a count of verified tickets.
- * Scoring Rule: 1 point per 2 verified tickets.
- * Carryover: remaining odd ticket carried over towards the next point.
+ * Driven by configurable scoring rules (default ratio: 2, default carryover: true).
  */
-export function calculatePointsFromTickets(verifiedTickets: number): {
+export function calculatePointsFromTickets(
+  verifiedTickets: number,
+  config?: Partial<ScoringConfig>
+): {
   points: number;
   carryoverTickets: number;
 } {
   const safeTickets = Math.max(0, Math.floor(verifiedTickets || 0));
-  const ratio = CONFERENCE_CONFIG.scoring.ticketsPerPoint; // default: 2
+  const ratio = Math.max(
+    1,
+    Math.floor(config?.ticketsPerPoint ?? CONFERENCE_CONFIG.scoring.ticketsPerPoint)
+  );
+  const allowCarryover = config?.enableCarryover ?? true;
+
   const points = Math.floor(safeTickets / ratio);
-  const carryoverTickets = safeTickets % ratio;
+  const carryoverTickets = allowCarryover ? safeTickets % ratio : 0;
 
   return {
     points,
@@ -25,7 +32,10 @@ export function calculatePointsFromTickets(verifiedTickets: number): {
  * Aggregates a volunteer's referral submissions into a scoring summary.
  * Only 'approved' referrals count toward points.
  */
-export function calculateVolunteerSummary(referrals: ReferralRecord[]): ScoringSummary {
+export function calculateVolunteerSummary(
+  referrals: ReferralRecord[],
+  config?: Partial<ScoringConfig>
+): ScoringSummary {
   let approvedTickets = 0;
   let pendingTickets = 0;
   let rejectedTickets = 0;
@@ -44,7 +54,10 @@ export function calculateVolunteerSummary(referrals: ReferralRecord[]): ScoringS
     }
   }
 
-  const { points, carryoverTickets } = calculatePointsFromTickets(approvedTickets);
+  const { points, carryoverTickets } = calculatePointsFromTickets(
+    approvedTickets,
+    config
+  );
 
   return {
     totalSubmittedTickets,

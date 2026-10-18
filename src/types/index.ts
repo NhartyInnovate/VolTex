@@ -4,6 +4,19 @@ export type UserRole = "volunteer" | "admin";
 
 export type ReferralStatus = "pending" | "approved" | "rejected";
 
+export type ScoringPolicyStatus = "draft" | "active" | "archived";
+
+export interface ScoringConfig {
+  id: string;
+  ticketsPerPoint: number;
+  enableCarryover: boolean;
+  status: ScoringPolicyStatus;
+  label?: string;
+  notes?: string;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;

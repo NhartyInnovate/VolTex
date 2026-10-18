@@ -5,17 +5,17 @@
 
 import assert from "node:assert/strict";
 
-// Replicate pure scoring logic from src/lib/scoring.ts
-const TICKETS_PER_POINT = 2;
-
-function calculatePointsFromTickets(verifiedTickets) {
+// Pure scoring logic matching src/lib/scoring.ts
+function calculatePointsFromTickets(verifiedTickets, config = {}) {
   const safeTickets = Math.max(0, Math.floor(verifiedTickets || 0));
-  const points = Math.floor(safeTickets / TICKETS_PER_POINT);
-  const carryoverTickets = safeTickets % TICKETS_PER_POINT;
+  const ratio = Math.max(1, Math.floor(config.ticketsPerPoint ?? 2));
+  const allowCarryover = config.enableCarryover ?? true;
+  const points = Math.floor(safeTickets / ratio);
+  const carryoverTickets = allowCarryover ? safeTickets % ratio : 0;
   return { points, carryoverTickets };
 }
 
-function calculateVolunteerSummary(referrals) {
+function calculateVolunteerSummary(referrals, config = {}) {
   let approvedTickets = 0;
   let pendingTickets = 0;
   let rejectedTickets = 0;
@@ -34,7 +34,7 @@ function calculateVolunteerSummary(referrals) {
     }
   }
 
-  const { points, carryoverTickets } = calculatePointsFromTickets(approvedTickets);
+  const { points, carryoverTickets } = calculatePointsFromTickets(approvedTickets, config);
 
   return {
     totalSubmittedTickets,
@@ -46,9 +46,31 @@ function calculateVolunteerSummary(referrals) {
   };
 }
 
+// Team fallback logic matching src/config/constants.ts
+const CONFIRMED_TEAMS = [
+  "Protocol/Ushering/Logistics Team",
+  "TEDxGwarinpa Prayer Team",
+  "Volunteer Management Team",
+  "Health and Welfare Team",
+  "Photography and Videography Team",
+  "Curation/Programs Team",
+  "Sponsorship and Partnership Team",
+  "TEDxGwarinpa Novelty Match ⚽",
+  "Public Relation (PR) Team",
+  "Technical/Sound Team",
+  "Website Team",
+];
+
+function getSafeVolunteerTeam(team) {
+  if (!team || typeof team !== "string" || !team.trim()) {
+    return "Volunteer Management Team";
+  }
+  return team.trim();
+}
+
 console.log("=== Running VolTex Security & Scoring Test Suite ===");
 
-// 1. Test Base Scoring & Carryover Rules
+// 1. Test Base Scoring & Carryover Rules (Default 1 pt per 2 tickets)
 console.log("\n[Test 1] Scoring Edge Cases (1 pt / 2 tickets + odd carryover)");
 {
   assert.deepEqual(calculatePointsFromTickets(0), { points: 0, carryoverTickets: 0 });
@@ -146,6 +168,46 @@ console.log("\n[Test 5] Ticket Quantity Bounds (1 to 50)");
   console.log("✔ Quantity bounds verified.");
 }
 
+// 6. Test Configurable Admin Scoring Policies
+console.log("\n[Test 6] Configurable Scoring Policies");
+{
+  // Test ratio 3 with carryover
+  const configRatio3 = { ticketsPerPoint: 3, enableCarryover: true };
+  assert.deepEqual(calculatePointsFromTickets(6, configRatio3), { points: 2, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(7, configRatio3), { points: 2, carryoverTickets: 1 });
+  assert.deepEqual(calculatePointsFromTickets(8, configRatio3), { points: 2, carryoverTickets: 2 });
+  assert.deepEqual(calculatePointsFromTickets(9, configRatio3), { points: 3, carryoverTickets: 0 });
+
+  // Test ratio 2 with carryover DISABLED
+  const configNoCarryover = { ticketsPerPoint: 2, enableCarryover: false };
+  assert.deepEqual(calculatePointsFromTickets(3, configNoCarryover), { points: 1, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(5, configNoCarryover), { points: 2, carryoverTickets: 0 });
+
+  // Test 1-to-1 ratio
+  const config1to1 = { ticketsPerPoint: 1, enableCarryover: true };
+  assert.deepEqual(calculatePointsFromTickets(4, config1to1), { points: 4, carryoverTickets: 0 });
+
+  console.log("✔ Configurable scoring policies verified.");
+}
+
+// 7. Test Confirmed Team List & Fallbacks
+console.log("\n[Test 7] Volunteer Team Structure & Safe Fallbacks");
+{
+  assert.equal(CONFIRMED_TEAMS.length, 11, "Must contain exactly 11 confirmed community teams");
+  assert.ok(CONFIRMED_TEAMS.includes("TEDxGwarinpa Novelty Match ⚽"));
+  assert.ok(CONFIRMED_TEAMS.includes("Website Team"));
+  assert.ok(CONFIRMED_TEAMS.includes("Protocol/Ushering/Logistics Team"));
+
+  // Fallback tests
+  assert.equal(getSafeVolunteerTeam("Website Team"), "Website Team");
+  assert.equal(getSafeVolunteerTeam(""), "Volunteer Management Team");
+  assert.equal(getSafeVolunteerTeam(null), "Volunteer Management Team");
+  assert.equal(getSafeVolunteerTeam(undefined), "Volunteer Management Team");
+  assert.equal(getSafeVolunteerTeam("Legacy Disbanded Team"), "Legacy Disbanded Team", "Legacy team string is preserved safely");
+
+  console.log("✔ Volunteer team structure and safe fallbacks verified.");
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL VERIFICATION TESTS PASSED SUCCESSFULLY (5/5)");
+console.log("✔ ALL VERIFICATION TESTS PASSED SUCCESSFULLY (7/7)");
 console.log("=======================================================\n");

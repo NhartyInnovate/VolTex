@@ -1,33 +1,19 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
 import {
   MOCK_ADMIN_USER,
   MOCK_ADMIN_ALL_REFERRALS,
 } from "@/data/mock-data";
-import { CONFERENCE_CONFIG } from "@/config/constants";
-import { calculatePointsFromTickets } from "@/lib/scoring";
-import { ReferralRecord, ReferralStatus } from "@/types";
-import { formatDateTime } from "@/lib/utils";
 import {
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Clock,
-  ExternalLink,
-  Search,
-  Filter,
-  Check,
-  X,
-  FileText,
-  User,
-  Users,
-  Trophy,
-  Ticket,
-  Sparkles,
-} from "lucide-react";
+  CONFERENCE_CONFIG,
+  DEFAULT_SCORING_CONFIG,
+  getSafeVolunteerTeam,
+} from "@/config/constants";
+import { calculatePointsFromTickets } from "@/lib/scoring";
+import { ReferralRecord, ReferralStatus, ScoringConfig } from "@/types";
+import { formatDateTime } from "@/lib/utils";
+import { Search, X, Settings2, AlertCircle } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const [referrals, setReferrals] = useState<ReferralRecord[]>(
@@ -41,6 +27,19 @@ export default function AdminDashboardPage() {
   const [decisionNotes, setDecisionNotes] = useState("");
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Configurable Scoring Policy State
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(
+    DEFAULT_SCORING_CONFIG
+  );
+  const [draftConfig, setDraftConfig] = useState<ScoringConfig>(
+    DEFAULT_SCORING_CONFIG
+  );
+  const [isEditingScoring, setIsEditingScoring] = useState(false);
+  const [isConfirmingPolicyChange, setIsConfirmingPolicyChange] = useState(false);
+  const [scoringConfigError, setScoringConfigError] = useState<string | null>(
+    null
+  );
 
   // Filter referrals for admin queue
   const filteredReferrals = useMemo(() => {
@@ -57,7 +56,7 @@ export default function AdminDashboardPage() {
     });
   }, [referrals, selectedStatus, searchQuery]);
 
-  // Overall Statistics
+  // Overall Statistics calculated dynamically using active scoring policy
   const stats = useMemo(() => {
     const total = referrals.length;
     const pending = referrals.filter((r) => r.status === "pending").length;
@@ -69,8 +68,8 @@ export default function AdminDashboardPage() {
       .filter((r) => r.status === "approved")
       .reduce((sum, r) => sum + r.ticketQuantity, 0);
 
-    const { points: totalPointsAwarded } =
-      calculatePointsFromTickets(totalApprovedTickets);
+    const { points: totalPointsAwarded, carryoverTickets: totalCarryover } =
+      calculatePointsFromTickets(totalApprovedTickets, scoringConfig);
 
     return {
       total,
@@ -80,8 +79,9 @@ export default function AdminDashboardPage() {
       duplicates,
       totalApprovedTickets,
       totalPointsAwarded,
+      totalCarryover,
     };
-  }, [referrals]);
+  }, [referrals, scoringConfig]);
 
   // Handle Approve or Reject
   const handleUpdateStatus = (
@@ -121,8 +121,8 @@ export default function AdminDashboardPage() {
             adminNotes:
               notes ||
               (newStatus === "approved"
-                ? "Manually verified with Meeteor Hub records"
-                : "Record not matched on Meeteor"),
+                ? "Verified against Meeteor Hub records"
+                : "Not matched on Meeteor"),
             verifiedAt: new Date().toISOString(),
             verifiedBy: MOCK_ADMIN_USER.fullName,
           };
@@ -131,430 +131,594 @@ export default function AdminDashboardPage() {
       })
     );
 
-    setActionSuccess(
-      `Referral successfully marked as ${newStatus.toUpperCase()}`
-    );
+    setActionSuccess(`Referral marked as ${newStatus.toUpperCase()}`);
     setActiveReferral(null);
     setDecisionNotes("");
     setTimeout(() => setActionSuccess(null), 3000);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* 1. Header Banner & Admin Security Notice */}
-      <div className="tedx-surface rounded-2xl p-6 sm:p-8 border-zinc-800 bg-gradient-to-r from-zinc-950 via-zinc-900 to-black relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-40 bg-zinc-700/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="space-y-3 relative z-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-200 uppercase tracking-wider">
-              <ShieldCheck className="w-3.5 h-3.5 text-tedx-red" />
-              Admin Verification Hub Preview
-            </span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-950/60 text-tedx-lightred border border-red-800/40 font-semibold">
-              Restricted Role: Administrator
-            </span>
-          </div>
-
-          <h1 className="text-2xl sm:text-4xl font-black text-white">
-            Referral Verification & Scoring
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      {/* 1. Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-800/80 pb-6 animate-subtle-fade-up">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Referral Verification
           </h1>
-
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl leading-relaxed">
-            Reconcile volunteer ticket claims against the official Meeteor Hub attendee register. Approving referrals immediately updates volunteer scores and public leaderboard standings.
+          <p className="text-xs text-zinc-400 mt-1">
+            Reconcile submitted volunteer claims against official Meeteor Hub attendee records.
           </p>
         </div>
 
-        {/* External Meeteor Reference Link */}
-        <div className="relative z-10 shrink-0">
+        <div>
           <a
             href={CONFERENCE_CONFIG.ticketUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold border border-zinc-700 transition-all shadow-md"
+            className="text-xs text-zinc-300 hover:text-white underline underline-offset-4 active:scale-[0.98] transition-all"
           >
-            Open Meeteor Event Hub
-            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+            Open Meeteor Hub ↗
           </a>
         </div>
       </div>
 
-      {/* 2. Admin Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Pending Claims */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Pending Review</span>
-            <Clock className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-3xl font-black text-amber-400">
+      {/* 2. Concise Summary Line with Staggered Entrance */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-75 hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">
+            Pending Review
+          </span>
+          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
             {stats.pending}
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-2">Requires verification</p>
+          </span>
         </div>
-
-        {/* Flagged Duplicates */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Duplicate Claims</span>
-            <AlertTriangle className="w-4 h-4 text-tedx-red" />
-          </div>
-          <div className="text-3xl font-black text-tedx-lightred">
+        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-150 hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">
+            Duplicate Flags
+          </span>
+          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
             {stats.duplicates}
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            Shared buyer identifiers
-          </p>
+          </span>
         </div>
-
-        {/* Approved Tickets */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Verified Tickets</span>
-            <Ticket className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-3xl font-black text-emerald-400">
+        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-200 hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">
+            Verified Tickets
+          </span>
+          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
             {stats.totalApprovedTickets}
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            Confirmed attendee purchases
-          </p>
+          </span>
         </div>
-
-        {/* Points Awarded */}
-        <div className="tedx-surface rounded-2xl p-5 border-zinc-800">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Total Points</span>
-            <Trophy className="w-4 h-4 text-white" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {stats.totalPointsAwarded}
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            Awarded across all volunteers
-          </p>
+        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-300 hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">
+            Points Awarded
+          </span>
+          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
+            {stats.totalPointsAwarded}{" "}
+            <span className="text-[10px] font-normal text-zinc-500">pts</span>
+          </span>
         </div>
       </div>
 
-      {/* Action Notification */}
-      {actionSuccess && (
-        <div className="bg-emerald-950/70 border border-emerald-800 text-emerald-300 p-4 rounded-xl text-xs flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span>{actionSuccess}</span>
+      {/* 3. Scoring Settings Section */}
+      <div className="border border-zinc-800/80 rounded bg-[#111114] p-5 space-y-4 animate-subtle-fade-up delay-150">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/60 pb-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Settings2 className="w-4 h-4 text-zinc-400" />
+              <h2 className="text-sm font-bold text-white tracking-tight">
+                Scoring Settings
+              </h2>
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                  scoringConfig.status === "active"
+                    ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/40"
+                    : "bg-amber-950/40 text-amber-400 border-amber-800/40"
+                }`}
+              >
+                {scoringConfig.status === "active"
+                  ? "Active Policy (Demo)"
+                  : "Draft Awaiting Committee Approval"}
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-1">
+              Configure point ratios and carryovers. The TEDxGwarinpa team has not yet finalized official point rules; current ratios are provisional.
+            </p>
           </div>
+
+          {!isEditingScoring && (
+            <button
+              onClick={() => {
+                setDraftConfig(scoringConfig);
+                setScoringConfigError(null);
+                setIsEditingScoring(true);
+              }}
+              className="text-xs font-medium px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 transition-all self-start sm:self-auto"
+            >
+              Configure Scoring
+            </button>
+          )}
+        </div>
+
+        {isEditingScoring ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setScoringConfigError(null);
+              const qty = Number(draftConfig.ticketsPerPoint);
+              if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+                setScoringConfigError(
+                  "Tickets required per point must be an integer between 1 and 50."
+                );
+                return;
+              }
+              setIsConfirmingPolicyChange(true);
+            }}
+            className="space-y-4 text-xs pt-1"
+          >
+            {scoringConfigError && (
+              <div
+                role="alert"
+                className="p-2.5 rounded border border-red-800/60 bg-red-950/40 text-red-300 text-[11px] flex items-center gap-2"
+              >
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{scoringConfigError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Tickets required per point */}
+              <div>
+                <label className="block font-medium text-zinc-300 mb-1">
+                  Tickets Required per Point *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  required
+                  value={draftConfig.ticketsPerPoint}
+                  onChange={(e) =>
+                    setDraftConfig({
+                      ...draftConfig,
+                      ticketsPerPoint: parseInt(e.target.value) || 1,
+                    })
+                  }
+                  className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors font-mono"
+                />
+                <span className="text-[10px] text-zinc-500 mt-1 block">
+                  e.g. 2 means 1 point awarded per 2 verified tickets.
+                </span>
+              </div>
+
+              {/* Odd-ticket carryover */}
+              <div>
+                <label className="block font-medium text-zinc-300 mb-1">
+                  Odd-Ticket Carryover
+                </label>
+                <div className="pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={draftConfig.enableCarryover}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          enableCarryover: e.target.checked,
+                        })
+                      }
+                      className="rounded border-zinc-800 text-tedx-red bg-[#09090b] focus:ring-0"
+                    />
+                    <span>Enable odd-ticket carryover</span>
+                  </label>
+                  <span className="text-[10px] text-zinc-500 mt-1 block">
+                    Carries remainder ticket towards the volunteer&apos;s next point.
+                  </span>
+                </div>
+              </div>
+
+              {/* Policy Status */}
+              <div>
+                <label className="block font-medium text-zinc-300 mb-1">
+                  Scoring Policy Status *
+                </label>
+                <select
+                  value={draftConfig.status}
+                  onChange={(e) =>
+                    setDraftConfig({
+                      ...draftConfig,
+                      status: e.target.value as "draft" | "active",
+                    })
+                  }
+                  className="w-full bg-[#09090b] border border-zinc-800 rounded px-2.5 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+                >
+                  <option value="draft">Draft Awaiting Committee Approval</option>
+                  <option value="active">Active Policy (Live Calculations)</option>
+                </select>
+                <span className="text-[10px] text-zinc-500 mt-1 block">
+                  Select Draft until leadership agrees on point formulas.
+                </span>
+              </div>
+            </div>
+
+            {/* Policy Notes */}
+            <div>
+              <label className="block font-medium text-zinc-300 mb-1">
+                Policy Notes / Rationale
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Early promo phase: 1 pt per 2 tickets (provisional)"
+                value={draftConfig.notes || ""}
+                onChange={(e) =>
+                  setDraftConfig({
+                    ...draftConfig,
+                    notes: e.target.value,
+                  })
+                }
+                className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-zinc-800/60">
+              <span className="text-[11px] text-zinc-500">
+                Demo Mode: Policy updates are held in browser state and do not overwrite historical records.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftConfig(scoringConfig);
+                    setIsEditingScoring(false);
+                    setScoringConfigError(null);
+                  }}
+                  className="px-3 py-1.5 rounded text-zinc-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all shadow-xs"
+                >
+                  Review & Save Policy
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+            <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
+              <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
+                Point Formula
+              </span>
+              <span className="font-semibold text-zinc-200 mt-0.5 block font-mono">
+                1 Point = {scoringConfig.ticketsPerPoint} Verified Tickets
+              </span>
+            </div>
+            <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
+              <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
+                Carryover Rule
+              </span>
+              <span className="font-semibold text-zinc-200 mt-0.5 block">
+                {scoringConfig.enableCarryover
+                  ? "Odd-ticket carryover enabled"
+                  : "Carryover disabled"}
+              </span>
+            </div>
+            <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
+              <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
+                Committee Status
+              </span>
+              <span className="font-semibold text-zinc-200 mt-0.5 block">
+                {scoringConfig.status === "active"
+                  ? "Active Policy (Demo)"
+                  : "Draft (Provisional)"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Alerts */}
+      {actionSuccess && (
+        <div className="border border-emerald-800/60 bg-emerald-950/40 text-emerald-300 px-3 py-2 rounded text-xs animate-subtle-fade-up">
+          {actionSuccess}
         </div>
       )}
-
-      {/* Action Error Notification */}
       {actionError && (
-        <div className="bg-red-950/80 border border-red-800 text-red-200 p-4 rounded-xl text-xs flex items-center justify-between shadow-lg animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-tedx-red" />
-            <span>{actionError}</span>
-          </div>
+        <div className="border border-red-800/60 bg-red-950/40 text-red-300 px-3 py-2 rounded text-xs flex items-center justify-between animate-subtle-fade-up">
+          <span>{actionError}</span>
           <button
             onClick={() => setActionError(null)}
-            className="text-xs text-red-400 hover:text-white ml-2 font-bold"
+            className="text-red-400 hover:text-white ml-2 text-[11px]"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* 3. Verification Queue */}
-      <div className="tedx-surface rounded-2xl border-zinc-800 overflow-hidden shadow-xl space-y-4 p-6 sm:p-8">
-        {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-              Referral Review Queue
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-mono">
-                {filteredReferrals.length}
-              </span>
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Select any claim to reconcile with Meeteor and issue approval.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            {/* Search */}
-            <div className="relative w-full sm:w-60">
-              <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search buyer, volunteer, ref..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-black border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-tedx-red transition-colors"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-1 bg-black p-1 rounded-lg border border-zinc-800 text-xs w-full sm:w-auto">
-              {["all", "pending", "approved", "rejected"].map((st) => (
+      {/* 4. Verification Queue */}
+      <div className="space-y-4 animate-subtle-fade-up delay-200">
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1">
+            {["pending", "all", "approved", "rejected"].map((st) => {
+              const count =
+                st === "all"
+                  ? referrals.length
+                  : referrals.filter((r) => r.status === st).length;
+              return (
                 <button
                   key={st}
                   onClick={() => setSelectedStatus(st)}
-                  className={`px-3 py-1 rounded capitalize font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded capitalize transition-colors ${
                     selectedStatus === st
-                      ? "bg-zinc-800 text-white font-bold"
-                      : "text-zinc-400 hover:text-white"
+                      ? "bg-zinc-800 text-white font-medium"
+                      : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  {st}
+                  {st} ({count})
                 </button>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+
+          {/* Search */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search buyer, volunteer, ref..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#111114] border border-zinc-800 rounded pl-8 pr-3 py-1.5 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition-colors"
+            />
           </div>
         </div>
 
         {/* Verification Table */}
-        <div className="overflow-x-auto rounded-xl border border-zinc-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-900/80 text-zinc-400 uppercase text-[11px] font-bold tracking-wider border-b border-zinc-800">
-              <tr>
-                <th className="py-3.5 px-4 sm:px-6">Volunteer</th>
-                <th className="py-3.5 px-4 sm:px-6">Buyer Name</th>
-                <th className="py-3.5 px-4 sm:px-6">Ticket & Qty</th>
-                <th className="py-3.5 px-4 sm:px-6">Identifier / Code</th>
-                <th className="py-3.5 px-4 sm:px-6">Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60 bg-zinc-950/40">
-              {filteredReferrals.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-10 text-center text-zinc-500 text-xs">
-                    No records found in this queue.
-                  </td>
+        <div className="border border-zinc-800/80 rounded bg-[#111114] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-[#0e0e11]">
+                  <th className="py-2.5 px-4">Volunteer</th>
+                  <th className="py-2.5 px-4">Buyer Name</th>
+                  <th className="py-2.5 px-4">Ticket</th>
+                  <th className="py-2.5 px-4">Identifier / Ref</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
-              ) : (
-                filteredReferrals.map((r) => (
-                  <tr
-                    key={r.id}
-                    className={`hover:bg-zinc-900/40 transition-colors ${
-                      r.flaggedDuplicate ? "bg-amber-950/15" : ""
-                    }`}
-                  >
-                    {/* Volunteer */}
-                    <td className="py-3.5 px-4 sm:px-6">
-                      <div className="font-semibold text-white">
-                        {r.volunteerName || "Unknown Volunteer"}
-                      </div>
-                      <div className="text-[11px] text-zinc-400">
-                        {r.volunteerTeam}
-                      </div>
-                    </td>
-
-                    {/* Buyer */}
-                    <td className="py-3.5 px-4 sm:px-6">
-                      <div className="font-medium text-zinc-200">
-                        {r.buyerName}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 font-mono">
-                        Submitted: {formatDateTime(r.createdAt)}
-                      </div>
-                    </td>
-
-                    {/* Ticket & Qty */}
-                    <td className="py-3.5 px-4 sm:px-6">
-                      <span className="font-mono font-bold text-white bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 mr-2">
-                        x{r.ticketQuantity}
-                      </span>
-                      <span className="text-xs text-zinc-300">
-                        {r.ticketType}
-                      </span>
-                    </td>
-
-                    {/* Identifier */}
-                    <td className="py-3.5 px-4 sm:px-6 text-xs font-mono text-zinc-300">
-                      <div>{r.buyerIdentifier || "—"}</div>
-                      {r.flaggedDuplicate && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-sans font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60 mt-1">
-                          <AlertTriangle className="w-3 h-3" /> Duplicate Alert
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3.5 px-4 sm:px-6">
-                      {r.status === "approved" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
-                          <CheckCircle2 className="w-3 h-3" /> Approved
-                        </span>
-                      )}
-                      {r.status === "pending" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/60 text-amber-400 border border-amber-800/60">
-                          <Clock className="w-3 h-3" /> Pending
-                        </span>
-                      )}
-                      {r.status === "rejected" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-950/60 text-red-400 border border-red-800/60">
-                          <XCircle className="w-3 h-3" /> Rejected
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 sm:px-6 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {r.status === "pending" ? (
-                          <>
-                            <button
-                              onClick={() =>
-                                handleUpdateStatus(r.id, "approved")
-                              }
-                              title="Quick Approve"
-                              className="p-1.5 rounded-lg bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800/50 transition-colors"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleUpdateStatus(r.id, "rejected")
-                              }
-                              title="Quick Reject"
-                              className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900/60 text-red-400 border border-red-800/50 transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveReferral(r);
-                                setDecisionNotes(r.adminNotes || "");
-                              }}
-                              className="text-xs px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium"
-                            >
-                              Review
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setActiveReferral(r);
-                              setDecisionNotes(r.adminNotes || "");
-                            }}
-                            className="text-xs px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800"
-                          >
-                            Details
-                          </button>
-                        )}
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60 font-sans">
+                {filteredReferrals.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-zinc-500">
+                      No records found in this queue.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredReferrals.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="hover:bg-zinc-800/20 transition-colors"
+                    >
+                      {/* Volunteer */}
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-zinc-200">
+                          {r.volunteerName}
+                        </div>
+                        <div className="text-[11px] text-zinc-500">
+                          {getSafeVolunteerTeam(r.volunteerTeam)}
+                        </div>
+                      </td>
+
+                      {/* Buyer */}
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-zinc-200">
+                          {r.buyerName}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 font-mono">
+                          {formatDateTime(r.createdAt)}
+                        </div>
+                      </td>
+
+                      {/* Ticket */}
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-medium text-zinc-200 mr-1.5">
+                          x{r.ticketQuantity}
+                        </span>
+                        <span className="text-zinc-400">{r.ticketType}</span>
+                      </td>
+
+                      {/* Identifier */}
+                      <td className="py-3 px-4 font-mono text-[11px] text-zinc-400">
+                        <div>{r.buyerIdentifier || "—"}</div>
+                        {r.flaggedDuplicate && (
+                          <div className="text-[10px] text-amber-500 mt-0.5">
+                            Duplicate flag: {r.duplicateReason || "Match detected"}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-4">
+                        {r.status === "approved" && (
+                          <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded text-[11px]">
+                            Approved
+                          </span>
+                        )}
+                        {r.status === "pending" && (
+                          <span className="text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded text-[11px]">
+                            Pending
+                          </span>
+                        )}
+                        {r.status === "rejected" && (
+                          <span className="text-red-400 bg-red-950/40 border border-red-800/40 px-2 py-0.5 rounded text-[11px]">
+                            Rejected
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            setActiveReferral(r);
+                            setDecisionNotes(r.adminNotes || "");
+                          }}
+                          className="px-2.5 py-1 rounded border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition-colors"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* 4. Detailed Decision Modal */}
+      {/* 5. Review / Reconcile Modal */}
       {activeReferral && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="tedx-surface rounded-2xl max-w-lg w-full p-6 sm:p-8 border-zinc-700 shadow-2xl relative space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-[#111114] border border-zinc-800 rounded max-w-md w-full p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <button
               onClick={() => setActiveReferral(null)}
-              className="absolute top-5 right-5 text-zinc-400 hover:text-white"
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-300 active:scale-95 transition-all"
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold text-zinc-400 mb-1">
-                <FileText className="w-3.5 h-3.5 text-tedx-red" />
-                Referral Verification Modal
-              </div>
-              <h3 className="text-xl font-black text-white">
-                Reconcile & Audit Decision
+              <h3 className="text-base font-bold text-white">
+                Review Referral
               </h3>
+              <p className="text-zinc-400 mt-0.5">
+                Reconcile details against Meeteor Hub before approving.
+              </p>
             </div>
 
-            {/* Referral Metadata Card */}
-            <div className="bg-black/60 rounded-xl p-4 border border-zinc-800 space-y-2.5 text-xs">
+            <div className="border border-zinc-800/80 rounded p-3 bg-[#09090b] space-y-2">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Claimant Volunteer:</span>
-                <span className="text-white font-semibold">
-                  {activeReferral.volunteerName} ({activeReferral.volunteerTeam})
+                <span className="text-zinc-500">Claimant:</span>
+                <span className="text-zinc-200 font-medium">
+                  {activeReferral.volunteerName} (
+                  {getSafeVolunteerTeam(activeReferral.volunteerTeam)})
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Buyer Name:</span>
-                <span className="text-white font-semibold">
-                  {activeReferral.buyerName}
-                </span>
+                <span className="text-zinc-500">Buyer:</span>
+                <span className="text-zinc-200 font-medium">{activeReferral.buyerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Ticket Type & Qty:</span>
-                <span className="text-white font-semibold">
+                <span className="text-zinc-500">Tickets:</span>
+                <span className="text-zinc-200 font-mono font-medium">
                   {activeReferral.ticketQuantity}x {activeReferral.ticketType}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Identifier / Reference:</span>
-                <span className="text-amber-400 font-mono font-bold">
-                  {activeReferral.buyerIdentifier || "None Provided"}
-                </span>
+                <span className="text-zinc-500">Identifier:</span>
+                <span className="font-mono text-zinc-200">{activeReferral.buyerIdentifier || "None"}</span>
               </div>
               {activeReferral.flaggedDuplicate && (
-                <div className="p-2.5 bg-amber-950/40 rounded-lg border border-amber-800/40 text-amber-300">
-                  <AlertTriangle className="w-4 h-4 inline mr-1 text-amber-400" />
-                  <strong>Duplicate Flagged:</strong> Another submission exists with this buyer identifier. Verify who initiated the contact before awarding points.
+                <div className="pt-1 text-[11px] text-amber-500">
+                  Duplicate flag: {activeReferral.duplicateReason || "Match detected in records."}
                 </div>
               )}
             </div>
 
-            {/* Admin Verification Notes */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Verification Notes (Saved to Audit Log)
+              <label className="block font-medium text-zinc-300 mb-1">
+                Verification Notes (Saved to Audit Trail)
               </label>
               <textarea
-                rows={3}
-                placeholder="e.g. Verified against Meeteor order #88902 or reason for rejection..."
+                rows={2}
+                placeholder="Reason or Meeteor order reference..."
                 value={decisionNotes}
                 onChange={(e) => setDecisionNotes(e.target.value)}
-                className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-tedx-red transition-colors"
+                className="w-full bg-[#09090b] border border-zinc-800 rounded p-2.5 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setActiveReferral(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white"
+                className="px-3 py-1.5 rounded text-zinc-400 hover:text-white active:scale-[0.98] transition-all"
               >
                 Close
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  handleUpdateStatus(
-                    activeReferral.id,
-                    "rejected",
-                    decisionNotes
-                  )
-                }
-                className="px-4 py-2 rounded-xl bg-red-950/60 hover:bg-red-900/60 text-red-400 text-xs font-bold border border-red-800/60 transition-all"
+                onClick={() => handleUpdateStatus(activeReferral.id, "rejected", decisionNotes)}
+                className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-300 hover:text-red-400 font-medium transition-all"
               >
                 Reject Claim
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  handleUpdateStatus(
-                    activeReferral.id,
-                    "approved",
-                    decisionNotes
-                  )
-                }
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
+                onClick={() => handleUpdateStatus(activeReferral.id, "approved", decisionNotes)}
+                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all shadow-xs"
               >
-                <Check className="w-4 h-4" />
                 Approve & Credit Points
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Policy Change Confirmation Modal */}
+      {isConfirmingPolicyChange && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-[#111114] border border-zinc-800 rounded max-w-md w-full p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
+            <h3 className="text-base font-bold text-white">
+              Confirm Scoring Policy Update
+            </h3>
+            <p className="text-zinc-300 leading-relaxed">
+              You are proposing to configure the scoring rule to:{" "}
+              <strong className="text-white">
+                1 point per {draftConfig.ticketsPerPoint} verified tickets
+              </strong>{" "}
+              with odd-ticket carryover{" "}
+              <strong className="text-white">
+                {draftConfig.enableCarryover ? "enabled" : "disabled"}
+              </strong>{" "}
+              under policy status{" "}
+              <strong className="text-white capitalize">
+                {draftConfig.status}
+              </strong>.
+            </p>
+
+            <div className="border border-amber-800/40 bg-amber-950/20 text-amber-300 p-3 rounded text-[11px] leading-relaxed">
+              <strong>Notice:</strong> This change dynamically recalculates points for approved tickets in the demo interface. It does not rewrite historical transaction records or past Meeteor verifications. In production, live rule changes require multi-organizer authorization.
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmingPolicyChange(false)}
+                className="px-3 py-1.5 rounded text-zinc-400 hover:text-white active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setScoringConfig(draftConfig);
+                  setIsConfirmingPolicyChange(false);
+                  setIsEditingScoring(false);
+                  setActionSuccess(
+                    `Scoring policy updated: 1 pt per ${draftConfig.ticketsPerPoint} tickets (${draftConfig.status}). Displayed points dynamically recalculated.`
+                  );
+                  setTimeout(() => setActionSuccess(null), 4000);
+                }}
+                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all shadow-xs"
+              >
+                Confirm & Apply (Demo)
               </button>
             </div>
           </div>

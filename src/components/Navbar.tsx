@@ -3,67 +3,48 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { CONFERENCE_CONFIG } from "@/config/constants";
-import {
-  Menu,
-  X,
-  Ticket,
-  Trophy,
-  UserCheck,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-black/80 border-b border-zinc-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-50 bg-[#09090b]/90 backdrop-blur-sm border-b border-zinc-800/80">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex items-baseline font-black tracking-tighter text-2xl">
+          <Link href="/" className="flex items-baseline gap-2">
+            <span className="font-black tracking-tight text-xl">
               <span className="text-tedx-red">TEDx</span>
               <span className="text-white">Gwarinpa</span>
-            </div>
-            <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-              VolTex
             </span>
+            <span className="text-xs text-zinc-500 font-medium">VolTex</span>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-7 text-xs font-medium text-zinc-400">
             <Link
               href="/#overview"
-              className="text-zinc-300 hover:text-white transition-colors"
+              className="hover:text-white transition-colors"
             >
-              Overview
-            </Link>
-            <Link
-              href="/#rules"
-              className="text-zinc-300 hover:text-white transition-colors"
-            >
-              Scoring Rules
+              How It Works
             </Link>
             <Link
               href="/#leaderboard"
-              className="text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors"
+              className="hover:text-white transition-colors"
             >
-              <Trophy className="w-4 h-4 text-tedx-red" />
-              Leaderboard
+              Leaderboard & Scoring
             </Link>
             <Link
               href="/dashboard"
-              className="text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors"
+              className="hover:text-white transition-colors"
             >
-              <UserCheck className="w-4 h-4 text-emerald-400" />
               Volunteer Portal
             </Link>
             <Link
               href="/admin"
-              className="text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5 transition-colors text-xs bg-zinc-900 px-2.5 py-1 rounded-md border border-zinc-800"
+              className="hover:text-white transition-colors text-zinc-500"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
               Admin
             </Link>
           </nav>
@@ -74,16 +55,14 @@ export function Navbar() {
               href={CONFERENCE_CONFIG.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition-all"
+              className="text-xs font-medium text-zinc-300 hover:text-white px-3 py-1.5 transition-colors"
             >
-              <Ticket className="w-3.5 h-3.5 text-tedx-red" />
-              Buy Ticket
+              Buy Tickets
             </a>
             <Link
               href="/auth/register"
-              className="inline-flex items-center gap-1 text-xs font-semibold px-4 py-2 rounded-lg bg-tedx-red hover:bg-tedx-darkred text-white shadow-tedx transition-all"
+              className="text-xs font-semibold px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white transition-colors"
             >
-              <Sparkles className="w-3.5 h-3.5" />
               Join Challenge
             </Link>
           </div>
@@ -94,20 +73,19 @@ export function Navbar() {
               href={CONFERENCE_CONFIG.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-tedx-red text-white"
+              className="text-xs font-medium text-zinc-300 px-2 py-1"
             >
-              <Ticket className="w-3 h-3" />
               Tickets
             </a>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 focus:outline-none"
+              className="p-1.5 text-zinc-400 hover:text-white focus:outline-none"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               ) : (
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5" />
               )}
             </button>
           </div>
@@ -116,60 +94,50 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-zinc-800 bg-zinc-950 px-4 pt-3 pb-5 space-y-3">
+        <div className="md:hidden border-b border-zinc-800 bg-[#09090b] px-4 py-4 space-y-3 text-sm">
           <Link
             href="/#overview"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-zinc-200 hover:bg-zinc-900"
+            className="block text-zinc-300 hover:text-white py-1"
           >
-            Overview
-          </Link>
-          <Link
-            href="/#rules"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-zinc-200 hover:bg-zinc-900"
-          >
-            Scoring Rules
+            How It Works
           </Link>
           <Link
             href="/#leaderboard"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-zinc-200 hover:bg-zinc-900 flex items-center gap-2"
+            className="block text-zinc-300 hover:text-white py-1"
           >
-            <Trophy className="w-4 h-4 text-tedx-red" />
-            Public Leaderboard
+            Leaderboard & Scoring
           </Link>
           <Link
             href="/dashboard"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-emerald-400 hover:bg-zinc-900 flex items-center gap-2"
+            className="block text-zinc-300 hover:text-white py-1"
           >
-            <UserCheck className="w-4 h-4" />
-            Volunteer Dashboard
+            Volunteer Portal
           </Link>
           <Link
             href="/admin"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:bg-zinc-900 flex items-center gap-2"
+            className="block text-zinc-500 hover:text-zinc-300 py-1"
           >
-            <ShieldCheck className="w-4 h-4" />
-            Admin Hub (Preview)
+            Admin Verification
           </Link>
 
-          <div className="pt-2 border-t border-zinc-800 grid grid-cols-2 gap-2">
-            <Link
-              href="/auth/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-center px-4 py-2.5 rounded-lg text-sm font-semibold text-zinc-300 bg-zinc-900 border border-zinc-800"
-            >
-              Volunteer Log In
-            </Link>
+          <div className="pt-3 border-t border-zinc-800/80 flex flex-col gap-2">
             <Link
               href="/auth/register"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-center px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-tedx-red shadow-tedx"
+              className="text-center py-2 rounded bg-tedx-red text-white text-xs font-semibold"
             >
-              Register Now
+              Join the Challenge
+            </Link>
+            <Link
+              href="/auth/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-center py-2 text-zinc-400 hover:text-white text-xs"
+            >
+              Sign In
             </Link>
           </div>
         </div>

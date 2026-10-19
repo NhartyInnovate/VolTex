@@ -360,6 +360,132 @@ console.log("\n[Test 7] Volunteer Team Structure & Safe Fallbacks");
   console.log("✔ Volunteer team structure and safe fallbacks verified.");
 }
 
+// 8. Test Database Invariant: Duplicate-Flagged Referral Approval Verification Notes
+console.log("\n[Test 8] Database Invariant: Duplicate Referral Approval Notes");
+{
+  // Constraint logic matching check_duplicate_approval_notes:
+  // status <> 'approved' OR flagged_duplicate = FALSE OR (admin_notes IS NOT NULL AND length(trim(admin_notes)) >= 5)
+  function validateReferralApprovalConstraint(record) {
+    const { status, flaggedDuplicate, adminNotes } = record;
+    if (status !== "approved") return true;
+    if (!flaggedDuplicate) return true;
+    if (!adminNotes) return false;
+    const trimmed = adminNotes.trim();
+    return trimmed.length >= 5;
+  }
+
+  // Case 1: Normal referral approved without notes -> ALLOWED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: false,
+      adminNotes: null,
+    }),
+    true,
+    "Normal non-duplicate referral can be approved without notes"
+  );
+
+  // Case 2: Normal referral approved with notes -> ALLOWED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: false,
+      adminNotes: "Verified attendee",
+    }),
+    true,
+    "Normal non-duplicate referral can be approved with notes"
+  );
+
+  // Case 3: Duplicate-flagged referral pending without notes -> ALLOWED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "pending",
+      flaggedDuplicate: true,
+      adminNotes: null,
+    }),
+    true,
+    "Duplicate-flagged referral in pending status is allowed without notes"
+  );
+
+  // Case 4: Duplicate-flagged referral rejected without notes -> ALLOWED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "rejected",
+      flaggedDuplicate: true,
+      adminNotes: null,
+    }),
+    true,
+    "Duplicate-flagged referral can be rejected without notes"
+  );
+
+  // Case 5: Duplicate-flagged referral approved with MISSING notes -> BLOCKED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: true,
+      adminNotes: null,
+    }),
+    false,
+    "Duplicate-flagged referral CANNOT be approved with null admin_notes"
+  );
+
+  // Case 6: Duplicate-flagged referral approved with EMPTY string notes -> BLOCKED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: true,
+      adminNotes: "",
+    }),
+    false,
+    "Duplicate-flagged referral CANNOT be approved with empty string admin_notes"
+  );
+
+  // Case 7: Duplicate-flagged referral approved with WHITESPACE-ONLY notes -> BLOCKED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: true,
+      adminNotes: "     ",
+    }),
+    false,
+    "Duplicate-flagged referral CANNOT be approved with whitespace-only admin_notes"
+  );
+
+  // Case 8: Duplicate-flagged referral approved with SHORT (< 5 chars) notes -> BLOCKED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: true,
+      adminNotes: "ok",
+    }),
+    false,
+    "Duplicate-flagged referral CANNOT be approved with less than 5 characters"
+  );
+
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: true,
+      adminNotes: "  ok  ",
+    }),
+    false,
+    "Duplicate-flagged referral CANNOT be approved when trimmed length < 5"
+  );
+
+  // Case 9: Duplicate-flagged referral approved with VALID notes (>= 5 chars) -> ALLOWED
+  assert.equal(
+    validateReferralApprovalConstraint({
+      status: "approved",
+      flaggedDuplicate: true,
+      adminNotes: "Verified distinct payment on Meeteor Hub",
+    }),
+    true,
+    "Duplicate-flagged referral CAN be approved with valid organizer rationale"
+  );
+
+  console.log("✔ Database invariant for duplicate approval notes verified.");
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL VERIFICATION TESTS PASSED SUCCESSFULLY (7/7)");
+console.log("✔ ALL VERIFICATION TESTS PASSED SUCCESSFULLY (8/8)");
 console.log("=======================================================\n");

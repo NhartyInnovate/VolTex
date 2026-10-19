@@ -133,7 +133,7 @@ export function LeaderboardTable({ entries, isDemoData = true }: LeaderboardTabl
             {isDemoData ? "Sample preview data. " : ""}
             Rankings update automatically upon admin verification against Meeteor Hub.
           </span>
-          <span className="text-zinc-400">Provisional policy: 1 pt per 2 verified tickets</span>
+          <span className="text-zinc-400">Scoring policy: 5 pts per verified ticket</span>
         </div>
       </div>
     </div>

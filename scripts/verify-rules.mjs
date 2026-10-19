@@ -8,8 +8,19 @@ import assert from "node:assert/strict";
 // Pure scoring logic matching src/lib/scoring.ts
 function calculatePointsFromTickets(verifiedTickets, config = {}) {
   const safeTickets = Math.max(0, Math.floor(verifiedTickets || 0));
-  const ratio = Math.max(1, Math.floor(config.ticketsPerPoint ?? 2));
-  const allowCarryover = config.enableCarryover ?? true;
+
+  // If pointsPerTicket is provided (preferred model, default: 5)
+  if (config.pointsPerTicket !== undefined || (!config.ticketsPerPoint)) {
+    const pointsFactor = Math.max(1, Math.floor(config.pointsPerTicket ?? 5));
+    return {
+      points: safeTickets * pointsFactor,
+      carryoverTickets: 0,
+    };
+  }
+
+  // Legacy fallback ratio support if an admin sets ticketsPerPoint
+  const ratio = Math.max(1, Math.floor(config.ticketsPerPoint ?? 1));
+  const allowCarryover = config.enableCarryover ?? false;
   const points = Math.floor(safeTickets / ratio);
   const carryoverTickets = allowCarryover ? safeTickets % ratio : 0;
   return { points, carryoverTickets };
@@ -70,27 +81,25 @@ function getSafeVolunteerTeam(team) {
 
 console.log("=== Running VolTex Security & Scoring Test Suite ===");
 
-// 1. Test Base Scoring & Carryover Rules (Default 1 pt per 2 tickets)
-console.log("\n[Test 1] Scoring Edge Cases (1 pt / 2 tickets + odd carryover)");
+// 1. Test Base Scoring: 5 Points per Verified Ticket
+console.log("\n[Test 1] Scoring Edge Cases (5 points per verified ticket)");
 {
   assert.deepEqual(calculatePointsFromTickets(0), { points: 0, carryoverTickets: 0 });
-  assert.deepEqual(calculatePointsFromTickets(1), { points: 0, carryoverTickets: 1 });
-  assert.deepEqual(calculatePointsFromTickets(2), { points: 1, carryoverTickets: 0 });
-  assert.deepEqual(calculatePointsFromTickets(3), { points: 1, carryoverTickets: 1 });
-  assert.deepEqual(calculatePointsFromTickets(4), { points: 2, carryoverTickets: 0 });
-  assert.deepEqual(calculatePointsFromTickets(5), { points: 2, carryoverTickets: 1 });
-  assert.deepEqual(calculatePointsFromTickets(10), { points: 5, carryoverTickets: 0 });
-  assert.deepEqual(calculatePointsFromTickets(11), { points: 5, carryoverTickets: 1 });
+  assert.deepEqual(calculatePointsFromTickets(1), { points: 5, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(2), { points: 10, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(3), { points: 15, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(4), { points: 20, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(10), { points: 50, carryoverTickets: 0 });
   assert.deepEqual(calculatePointsFromTickets(-5), { points: 0, carryoverTickets: 0 }, "Negative tickets should be clamped to 0");
   console.log("✔ Base scoring tests passed.");
 }
 
-// 2. Test Volunteer Referral Aggregation & Isolation
+// 2. Test Volunteer Referral Aggregation & Isolation (Pending & Rejected earn 0)
 console.log("\n[Test 2] Referral Aggregation Integrity");
 {
   const testSubmissions = [
     { ticketQuantity: 2, status: "approved" },
-    { ticketQuantity: 1, status: "approved" }, // Total approved = 3 => 1 pt, 1 carryover
+    { ticketQuantity: 1, status: "approved" }, // Total approved = 3 => 3 * 5 = 15 pts
     { ticketQuantity: 4, status: "pending" },  // Should not count toward points
     { ticketQuantity: 2, status: "rejected" }, // Should not count toward points
   ];
@@ -100,36 +109,33 @@ console.log("\n[Test 2] Referral Aggregation Integrity");
   assert.equal(summary.approvedTickets, 3, "Approved tickets should be 3");
   assert.equal(summary.pendingTickets, 4, "Pending tickets should be 4");
   assert.equal(summary.rejectedTickets, 2, "Rejected tickets should be 2");
-  assert.equal(summary.points, 1, "3 approved tickets must equal 1 point");
-  assert.equal(summary.carryoverTickets, 1, "3 approved tickets must have 1 carryover ticket");
+  assert.equal(summary.points, 15, "3 approved tickets must equal 15 points (5 pts/ticket)");
+  assert.equal(summary.carryoverTickets, 0);
   console.log("✔ Referral aggregation tests passed.");
 }
 
-// 3. Test Carryover Preservation Across Incremental Submissions
-console.log("\n[Test 3] Incremental Carryover Progression");
+// 3. Test Point Accumulation Across Incremental Submissions
+console.log("\n[Test 3] Incremental Point Progression");
 {
-  // Volunteer starts with 1 approved ticket
+  // Volunteer starts with 1 approved ticket -> 5 pts
   let subs = [{ ticketQuantity: 1, status: "approved" }];
   let res = calculateVolunteerSummary(subs);
-  assert.equal(res.points, 0);
-  assert.equal(res.carryoverTickets, 1);
+  assert.equal(res.points, 5);
 
-  // Volunteer gets 1 more approved ticket -> point should trigger!
+  // Volunteer gets 1 more approved ticket -> 10 pts
   subs.push({ ticketQuantity: 1, status: "approved" });
   res = calculateVolunteerSummary(subs);
-  assert.equal(res.points, 1, "Carryover + new ticket must award 1 point");
-  assert.equal(res.carryoverTickets, 0, "Carryover should now be 0");
+  assert.equal(res.points, 10, "1 additional ticket must add 5 points");
 
-  // Volunteer gets 3 more approved tickets -> total 5 approved -> 2 pts + 1 carryover
+  // Volunteer gets 3 more approved tickets -> total 5 approved -> 25 pts
   subs.push({ ticketQuantity: 3, status: "approved" });
   res = calculateVolunteerSummary(subs);
-  assert.equal(res.points, 2);
-  assert.equal(res.carryoverTickets, 1);
-  console.log("✔ Incremental carryover progression verified.");
+  assert.equal(res.points, 25);
+  console.log("✔ Incremental point progression verified.");
 }
 
-// 4. Test Duplicate Normalization & Matching Logic
-console.log("\n[Test 4] Duplicate Identifier Normalization");
+// 4. Test Duplicate Normalization, Constraint Logic & Point Integrity
+console.log("\n[Test 4] Duplicate Identifier Normalization & Detection Rules");
 {
   const normalize = (val) => (val ? val.toLowerCase().trim() : "");
 
@@ -138,20 +144,157 @@ console.log("\n[Test 4] Duplicate Identifier Normalization");
   assert.equal(normalize(null), "");
   assert.equal(normalize(undefined), "");
 
-  const existing = ["mtr-tx-9901", "08031234567", "chidi@test.com"];
+  // Model a mock database referral collection
+  const referralsDB = [
+    {
+      id: "ref-1",
+      volunteer_id: "vol-1",
+      buyer_name: "Babatunde Lawal",
+      order_reference: "MTR-ORD-101",
+      buyer_email: "babatunde@example.com",
+      status: "pending",
+      ticket_quantity: 2,
+    },
+    {
+      id: "ref-2",
+      volunteer_id: "vol-2",
+      buyer_name: "Fatima Yusuf",
+      order_reference: "MTR-ORD-202",
+      buyer_email: "fatima@example.com",
+      status: "approved",
+      ticket_quantity: 3,
+    },
+    {
+      id: "ref-3",
+      volunteer_id: "vol-3",
+      buyer_name: "Kelechi Umeh",
+      order_reference: "MTR-ORD-303",
+      buyer_email: "kelechi@example.com",
+      status: "rejected",
+      ticket_quantity: 1,
+    },
+  ];
 
-  const checkDuplicate = (code) => {
-    const norm = normalize(code);
-    return norm ? existing.includes(norm) : false;
+  // Logic representing check_referral_duplicate() + unique index
+  const evaluateSubmission = (submission, existingList) => {
+    const normRef = normalize(submission.order_reference);
+    const normEmail = normalize(submission.buyer_email);
+    const normName = normalize(submission.buyer_name);
+
+    // 1. Order reference match check (across pending, approved, and rejected)
+    if (normRef) {
+      const match = existingList.find(
+        (r) => normalize(r.order_reference) === normRef
+      );
+      if (match) {
+        return {
+          allowed: false,
+          errorCode: "DUPLICATE_ORDER_REFERENCE",
+          message: "This order reference has already been submitted by another claim and cannot be credited again.",
+          flaggedDuplicate: true,
+          duplicateReason: "Purchase identifier matches existing referral claim",
+        };
+      }
+    }
+
+    // 2. Buyer email match check (allowed, but flagged for admin reconciliation)
+    let flaggedDuplicate = false;
+    let duplicateReason = null;
+    if (normEmail) {
+      const emailMatch = existingList.find(
+        (r) => normalize(r.buyer_email) === normEmail
+      );
+      if (emailMatch) {
+        flaggedDuplicate = true;
+        duplicateReason = "Matching buyer email detected; requires organizer reconciliation";
+      }
+    }
+
+    // 3. Name match check
+    if (!flaggedDuplicate && normName) {
+      const nameMatch = existingList.find(
+        (r) => normalize(r.buyer_name) === normName
+      );
+      if (nameMatch) {
+        flaggedDuplicate = true;
+        duplicateReason = "Matching buyer name detected; requires organizer reconciliation";
+      }
+    }
+
+    return {
+      allowed: true,
+      flaggedDuplicate,
+      duplicateReason,
+    };
   };
 
-  assert.equal(checkDuplicate("  MTR-TX-9901 "), true, "Should match despite spaces & case");
-  assert.equal(checkDuplicate("MTR-tx-9901"), true);
-  assert.equal(checkDuplicate("08031234567"), true);
-  assert.equal(checkDuplicate(""), false, "Empty string should never match");
-  assert.equal(checkDuplicate(null), false, "Null should never match");
-  assert.equal(checkDuplicate("MTR-NEW-9999"), false);
-  console.log("✔ Duplicate normalization verified.");
+  // 1. Same order reference submitted twice while pending -> REJECTED
+  const res1 = evaluateSubmission(
+    { order_reference: "MTR-ORD-101", buyer_email: "different@domain.com", buyer_name: "Different Name" },
+    referralsDB
+  );
+  assert.equal(res1.allowed, false, "Must reject duplicate order reference when existing is pending");
+  assert.equal(res1.errorCode, "DUPLICATE_ORDER_REFERENCE");
+
+  // 2. Same order reference submitted after approval -> REJECTED
+  const res2 = evaluateSubmission(
+    { order_reference: "MTR-ORD-202", buyer_email: "another@domain.com", buyer_name: "Another Name" },
+    referralsDB
+  );
+  assert.equal(res2.allowed, false, "Must reject duplicate order reference when existing is approved");
+
+  // 3. Same order reference with changed buyer details -> REJECTED
+  const res3 = evaluateSubmission(
+    { order_reference: "MTR-ORD-101", buyer_name: "Impersonator Name", buyer_email: "attacker@domain.com" },
+    referralsDB
+  );
+  assert.equal(res3.allowed, false, "Changing buyer name/email must not bypass order reference duplicate check");
+
+  // 4. Same buyer email with a DIFFERENT order reference -> ALLOWED but FLAGGED
+  const res4 = evaluateSubmission(
+    { order_reference: "MTR-ORD-404", buyer_email: "  Babatunde@Example.COM  ", buyer_name: "Babatunde Lawal" },
+    referralsDB
+  );
+  assert.equal(res4.allowed, true, "Legitimate repeat purchase by same email must be allowed");
+  assert.equal(res4.flaggedDuplicate, true, "Same email with new order ref must be flagged for admin review");
+  assert.equal(res4.duplicateReason, "Matching buyer email detected; requires organizer reconciliation");
+
+  // 5. Order references differing only by surrounding whitespace or letter case -> REJECTED
+  const res5 = evaluateSubmission(
+    { order_reference: "  mtr-ord-101  ", buyer_email: "test@domain.com", buyer_name: "Test" },
+    referralsDB
+  );
+  assert.equal(res5.allowed, false, "Whitespace and case variation must be normalized and rejected");
+
+  // 6. Same order reference submitted when previous was REJECTED -> REJECTED
+  const res6 = evaluateSubmission(
+    { order_reference: "MTR-ORD-303", buyer_email: "new@domain.com", buyer_name: "New Person" },
+    referralsDB
+  );
+  assert.equal(res6.allowed, false, "Cannot re-submit an order reference that was previously rejected");
+
+  // 7. Legitimate fresh second purchase by the same buyer with new order reference
+  const res7 = evaluateSubmission(
+    { order_reference: "MTR-ORD-505", buyer_email: "completely.new@example.com", buyer_name: "New Attendee" },
+    referralsDB
+  );
+  assert.equal(res7.allowed, true, "Fresh purchase must be allowed without duplicate flag");
+  assert.equal(res7.flaggedDuplicate, false);
+
+  // 8. Points remaining unchanged for pending, rejected, and duplicate submissions
+  const pointTestCollection = [
+    { ticketQuantity: 2, status: "approved" }, // 10 pts
+    { ticketQuantity: 5, status: "pending", flaggedDuplicate: true }, // 0 pts
+    { ticketQuantity: 4, status: "rejected", flaggedDuplicate: true }, // 0 pts
+    { ticketQuantity: 1, status: "pending", flaggedDuplicate: false }, // 0 pts
+  ];
+  const summaryPoints = calculateVolunteerSummary(pointTestCollection);
+  assert.equal(summaryPoints.points, 10, "Points must strictly come from approved tickets only");
+  assert.equal(summaryPoints.approvedTickets, 2);
+  assert.equal(summaryPoints.pendingTickets, 6);
+  assert.equal(summaryPoints.rejectedTickets, 4);
+
+  console.log("✔ Duplicate normalization, constraints & point integrity verified.");
 }
 
 // 5. Test Ticket Quantity Clamping Boundary
@@ -171,14 +314,23 @@ console.log("\n[Test 5] Ticket Quantity Bounds (1 to 50)");
 // 6. Test Configurable Admin Scoring Policies
 console.log("\n[Test 6] Configurable Scoring Policies");
 {
-  // Test ratio 3 with carryover
+  // Test official 5 points per ticket policy
+  const config5pts = { pointsPerTicket: 5 };
+  assert.deepEqual(calculatePointsFromTickets(1, config5pts), { points: 5, carryoverTickets: 0 });
+  assert.deepEqual(calculatePointsFromTickets(4, config5pts), { points: 20, carryoverTickets: 0 });
+
+  // Test custom 10 points per ticket policy
+  const config10pts = { pointsPerTicket: 10 };
+  assert.deepEqual(calculatePointsFromTickets(3, config10pts), { points: 30, carryoverTickets: 0 });
+
+  // Test legacy ratio 3 with carryover
   const configRatio3 = { ticketsPerPoint: 3, enableCarryover: true };
   assert.deepEqual(calculatePointsFromTickets(6, configRatio3), { points: 2, carryoverTickets: 0 });
   assert.deepEqual(calculatePointsFromTickets(7, configRatio3), { points: 2, carryoverTickets: 1 });
   assert.deepEqual(calculatePointsFromTickets(8, configRatio3), { points: 2, carryoverTickets: 2 });
   assert.deepEqual(calculatePointsFromTickets(9, configRatio3), { points: 3, carryoverTickets: 0 });
 
-  // Test ratio 2 with carryover DISABLED
+  // Test legacy ratio 2 with carryover DISABLED
   const configNoCarryover = { ticketsPerPoint: 2, enableCarryover: false };
   assert.deepEqual(calculatePointsFromTickets(3, configNoCarryover), { points: 1, carryoverTickets: 0 });
   assert.deepEqual(calculatePointsFromTickets(5, configNoCarryover), { points: 2, carryoverTickets: 0 });

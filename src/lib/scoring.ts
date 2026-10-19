@@ -3,7 +3,8 @@ import { ReferralRecord, ScoringConfig, ScoringSummary } from "@/types";
 
 /**
  * Calculates points and carryovers from a count of verified tickets.
- * Driven by configurable scoring rules (default ratio: 2, default carryover: true).
+ * Official rule: 5 points per verified ticket.
+ * Pending and rejected referrals earn zero points.
  */
 export function calculatePointsFromTickets(
   verifiedTickets: number,
@@ -13,12 +14,22 @@ export function calculatePointsFromTickets(
   carryoverTickets: number;
 } {
   const safeTickets = Math.max(0, Math.floor(verifiedTickets || 0));
-  const ratio = Math.max(
-    1,
-    Math.floor(config?.ticketsPerPoint ?? CONFERENCE_CONFIG.scoring.ticketsPerPoint)
-  );
-  const allowCarryover = config?.enableCarryover ?? true;
 
+  // If pointsPerTicket is provided (preferred model, default: 5)
+  if (config?.pointsPerTicket !== undefined || (!config?.ticketsPerPoint && CONFERENCE_CONFIG.scoring.pointsPerTicket)) {
+    const pointsFactor = Math.max(
+      1,
+      Math.floor(config?.pointsPerTicket ?? CONFERENCE_CONFIG.scoring.pointsPerTicket ?? 5)
+    );
+    return {
+      points: safeTickets * pointsFactor,
+      carryoverTickets: 0,
+    };
+  }
+
+  // Legacy fallback ratio support if an admin sets ticketsPerPoint
+  const ratio = Math.max(1, Math.floor(config?.ticketsPerPoint ?? 1));
+  const allowCarryover = config?.enableCarryover ?? false;
   const points = Math.floor(safeTickets / ratio);
   const carryoverTickets = allowCarryover ? safeTickets % ratio : 0;
 

@@ -2,14 +2,50 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { getAppUrl } from "@/lib/utils";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setErrorMessage(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage("Please enter your registered email address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const supabase = createClient();
+      const appUrl = getAppUrl();
+      // Directs user to /auth/callback with recovery type, which then navigates to /auth/reset-password
+      const redirectUrl = `${appUrl}/auth/callback?next=/auth/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsSubmitting(false);
+      setSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send password recovery instructions.";
+      setErrorMessage(msg);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -20,7 +56,7 @@ export default function ForgotPasswordPage() {
             Reset password
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Enter your registered volunteer email address to receive password recovery instructions.
+            Enter your registered volunteer email address to receive a secure recovery link.
           </p>
         </div>
 
@@ -31,7 +67,7 @@ export default function ForgotPasswordPage() {
                 Recovery Link Dispatched
               </h3>
               <p className="text-zinc-400 leading-relaxed">
-                If an account exists for <strong className="text-zinc-200">{email}</strong>, password reset instructions will arrive in your inbox.
+                If an account exists for <strong className="text-zinc-200">{email}</strong>, you will receive an email with instructions to securely choose a new password.
               </p>
               <div className="pt-2">
                 <Link
@@ -44,6 +80,15 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+              {errorMessage && (
+                <div
+                  role="alert"
+                  className="border border-red-800/60 bg-red-950/40 text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
+                >
+                  {errorMessage}
+                </div>
+              )}
+
               <div>
                 <label className="block font-medium text-zinc-300 mb-1">
                   Email Address
@@ -61,9 +106,10 @@ export default function ForgotPasswordPage() {
               <div className="pt-1">
                 <button
                   type="submit"
-                  className="w-full py-2 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all shadow-xs"
+                  disabled={isSubmitting}
+                  className="w-full py-2 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all disabled:opacity-50 shadow-xs"
                 >
-                  Send Recovery Link
+                  {isSubmitting ? "Sending instructions..." : "Send Recovery Link"}
                 </button>
               </div>
 

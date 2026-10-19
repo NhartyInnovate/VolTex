@@ -244,10 +244,10 @@ export default function AdminDashboardPage() {
             onSubmit={(e) => {
               e.preventDefault();
               setScoringConfigError(null);
-              const qty = Number(draftConfig.ticketsPerPoint);
-              if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+              const pts = Number(draftConfig.pointsPerTicket);
+              if (!Number.isInteger(pts) || pts < 1 || pts > 100) {
                 setScoringConfigError(
-                  "Tickets required per point must be an integer between 1 and 50."
+                  "Points awarded per verified ticket must be an integer between 1 and 100."
                 );
                 return;
               }
@@ -266,54 +266,28 @@ export default function AdminDashboardPage() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Tickets required per point */}
+              {/* Points awarded per verified ticket */}
               <div>
                 <label className="block font-medium text-zinc-300 mb-1">
-                  Tickets Required per Point *
+                  Points per Verified Ticket *
                 </label>
                 <input
                   type="number"
                   min="1"
-                  max="50"
+                  max="100"
                   required
-                  value={draftConfig.ticketsPerPoint}
+                  value={draftConfig.pointsPerTicket}
                   onChange={(e) =>
                     setDraftConfig({
                       ...draftConfig,
-                      ticketsPerPoint: parseInt(e.target.value) || 1,
+                      pointsPerTicket: parseInt(e.target.value) || 1,
                     })
                   }
                   className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors font-mono"
                 />
                 <span className="text-[10px] text-zinc-500 mt-1 block">
-                  e.g. 2 means 1 point awarded per 2 verified tickets.
+                  Official rule awards 5 points per verified ticket.
                 </span>
-              </div>
-
-              {/* Odd-ticket carryover */}
-              <div>
-                <label className="block font-medium text-zinc-300 mb-1">
-                  Odd-Ticket Carryover
-                </label>
-                <div className="pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={draftConfig.enableCarryover}
-                      onChange={(e) =>
-                        setDraftConfig({
-                          ...draftConfig,
-                          enableCarryover: e.target.checked,
-                        })
-                      }
-                      className="rounded border-zinc-800 text-tedx-red bg-[#09090b] focus:ring-0"
-                    />
-                    <span>Enable odd-ticket carryover</span>
-                  </label>
-                  <span className="text-[10px] text-zinc-500 mt-1 block">
-                    Carries remainder ticket towards the volunteer&apos;s next point.
-                  </span>
-                </div>
               </div>
 
               {/* Policy Status */}
@@ -331,32 +305,32 @@ export default function AdminDashboardPage() {
                   }
                   className="w-full bg-[#09090b] border border-zinc-800 rounded px-2.5 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
                 >
-                  <option value="draft">Draft Awaiting Committee Approval</option>
                   <option value="active">Active Policy (Live Calculations)</option>
+                  <option value="draft">Draft Awaiting Committee Approval</option>
                 </select>
                 <span className="text-[10px] text-zinc-500 mt-1 block">
-                  Select Draft until leadership agrees on point formulas.
+                  Active policy governs official point totals.
                 </span>
               </div>
-            </div>
 
-            {/* Policy Notes */}
-            <div>
-              <label className="block font-medium text-zinc-300 mb-1">
-                Policy Notes / Rationale
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Early promo phase: 1 pt per 2 tickets (provisional)"
-                value={draftConfig.notes || ""}
-                onChange={(e) =>
-                  setDraftConfig({
-                    ...draftConfig,
-                    notes: e.target.value,
-                  })
-                }
-                className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-              />
+              {/* Policy Notes */}
+              <div>
+                <label className="block font-medium text-zinc-300 mb-1">
+                  Policy Notes / Rationale
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Official challenge: 5 pts per ticket"
+                  value={draftConfig.notes || ""}
+                  onChange={(e) =>
+                    setDraftConfig({
+                      ...draftConfig,
+                      notes: e.target.value,
+                    })
+                  }
+                  className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                />
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-zinc-800/60">
@@ -391,17 +365,15 @@ export default function AdminDashboardPage() {
                 Point Formula
               </span>
               <span className="font-semibold text-zinc-200 mt-0.5 block font-mono">
-                1 Point = {scoringConfig.ticketsPerPoint} Verified Tickets
+                {scoringConfig.pointsPerTicket} Points per Verified Ticket
               </span>
             </div>
             <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
               <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
-                Carryover Rule
+                Verification Requirement
               </span>
               <span className="font-semibold text-zinc-200 mt-0.5 block">
-                {scoringConfig.enableCarryover
-                  ? "Odd-ticket carryover enabled"
-                  : "Carryover disabled"}
+                Admin approval against Meeteor Hub
               </span>
             </div>
             <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
@@ -410,7 +382,7 @@ export default function AdminDashboardPage() {
               </span>
               <span className="font-semibold text-zinc-200 mt-0.5 block">
                 {scoringConfig.status === "active"
-                  ? "Active Policy (Demo)"
+                  ? "Active Policy (Official)"
                   : "Draft (Provisional)"}
               </span>
             </div>
@@ -681,11 +653,7 @@ export default function AdminDashboardPage() {
             <p className="text-zinc-300 leading-relaxed">
               You are proposing to configure the scoring rule to:{" "}
               <strong className="text-white">
-                1 point per {draftConfig.ticketsPerPoint} verified tickets
-              </strong>{" "}
-              with odd-ticket carryover{" "}
-              <strong className="text-white">
-                {draftConfig.enableCarryover ? "enabled" : "disabled"}
+                {draftConfig.pointsPerTicket} points per verified ticket
               </strong>{" "}
               under policy status{" "}
               <strong className="text-white capitalize">
@@ -712,7 +680,7 @@ export default function AdminDashboardPage() {
                   setIsConfirmingPolicyChange(false);
                   setIsEditingScoring(false);
                   setActionSuccess(
-                    `Scoring policy updated: 1 pt per ${draftConfig.ticketsPerPoint} tickets (${draftConfig.status}). Displayed points dynamically recalculated.`
+                    `Scoring policy updated: ${draftConfig.pointsPerTicket} pts per verified ticket (${draftConfig.status}). Displayed points dynamically recalculated.`
                   );
                   setTimeout(() => setActionSuccess(null), 4000);
                 }}

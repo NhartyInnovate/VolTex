@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { PageTransition } from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   title: "TEDxGwarinpa | Volunteer Ticket Sales Challenge",
@@ -26,7 +27,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col antialiased selection:bg-tedx-red selection:text-white">
         <Navbar />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 flex flex-col">
+          <PageTransition>{children}</PageTransition>
+        </main>
         <Footer />
       </body>
     </html>

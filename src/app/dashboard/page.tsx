@@ -1,26 +1,32 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  MOCK_VOLUNTEER_USER,
-  MOCK_VOLUNTEER_REFERRALS,
-} from "@/data/mock-data";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   CONFERENCE_CONFIG,
+  DEFAULT_SCORING_CONFIG,
   PROMOTIONAL_TEMPLATES,
   TICKET_TYPES,
   getSafeVolunteerTeam,
 } from "@/config/constants";
 import { calculateVolunteerSummary } from "@/lib/scoring";
-import { ReferralRecord } from "@/types";
+import { ReferralRecord, ScoringConfig, UserProfile } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { triggerConfetti } from "@/lib/confetti";
-import { Copy, Check, X } from "lucide-react";
+import { Copy, Check, X, AlertCircle, RefreshCw } from "lucide-react";
 
 export default function VolunteerDashboardPage() {
-  const [referrals, setReferrals] = useState<ReferralRecord[]>(
-    MOCK_VOLUNTEER_REFERRALS
+  const router = useRouter();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(
+    DEFAULT_SCORING_CONFIG
   );
+  const [volunteerRank, setVolunteerRank] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,13 +37,131 @@ export default function VolunteerDashboardPage() {
   const [formTicketType, setFormTicketType] = useState<string>(TICKET_TYPES[0]);
   const [formQuantity, setFormQuantity] = useState<number>(1);
   const [formIdentifier, setFormIdentifier] = useState("");
+  const [formBuyerEmail, setFormBuyerEmail] = useState("");
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null);
   const [formSuccessState, setFormSuccessState] = useState(false);
 
-  // Compute live scoring from current submissions
+  // Load authenticated volunteer profile, referrals, and trusted scoring policy
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const supabase = createClient();
+
+      // 1. Verify user session via auth.getUser()
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        router.push("/auth/login?error=Please+sign+in+to+access+your+volunteer+portal.");
+        return;
+      }
+
+      // 2. Fetch authenticated user profile (enforced by RLS auth.uid() = id)
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone_number, volunteer_team, role, created_at")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        setFetchError("Unable to load your volunteer profile. Please try again.");
+        return;
+      }
+
+      setProfile({
+        id: profileData.id,
+        email: user.email || "",
+        fullName: profileData.full_name,
+        phoneNumber: profileData.phone_number,
+        volunteerTeam: getSafeVolunteerTeam(profileData.volunteer_team),
+        role: profileData.role,
+        createdAt: profileData.created_at,
+      });
+
+      // 3. Fetch referrals for authenticated user (RLS: auth.uid() = volunteer_id)
+      const { data: referralsData, error: referralsError } = await supabase
+        .from("referrals")
+        .select(
+          "id, volunteer_id, buyer_name, ticket_type, ticket_quantity, buyer_identifier, order_reference, buyer_email, status, admin_notes, flagged_duplicate, duplicate_reason, duplicate_source_id, verified_at, verified_by, created_at"
+        )
+        .eq("volunteer_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (referralsError) {
+        setFetchError("Unable to load referral records. Please try again.");
+        return;
+      }
+
+      const formattedReferrals: ReferralRecord[] = (referralsData || []).map((r) => ({
+        id: r.id,
+        volunteerId: r.volunteer_id,
+        volunteerName: profileData.full_name,
+        volunteerTeam: profileData.volunteer_team,
+        buyerName: r.buyer_name,
+        ticketType: r.ticket_type,
+        ticketQuantity: r.ticket_quantity,
+        buyerIdentifier: r.order_reference || r.buyer_identifier || undefined,
+        orderReference: r.order_reference || r.buyer_identifier || undefined,
+        buyerEmail: r.buyer_email || undefined,
+        status: r.status,
+        adminNotes: r.admin_notes ?? undefined,
+        flaggedDuplicate: r.flagged_duplicate ?? false,
+        duplicateReason: r.duplicate_reason ?? undefined,
+        duplicateSourceId: r.duplicate_source_id ?? undefined,
+        verifiedAt: r.verified_at ?? undefined,
+        verifiedBy: r.verified_by ?? undefined,
+        createdAt: r.created_at,
+      }));
+
+      setReferrals(formattedReferrals);
+
+      // 4. Fetch active scoring policy from database (RLS: select is allowed for everyone)
+      const { data: scoringData } = await supabase
+        .from("scoring_settings")
+        .select("id, points_per_ticket, status, label, notes, updated_at, updated_by")
+        .eq("id", "current_policy")
+        .single();
+
+      if (scoringData) {
+        setScoringConfig({
+          id: scoringData.id,
+          pointsPerTicket: scoringData.points_per_ticket,
+          status: scoringData.status,
+          label: scoringData.label,
+          notes: scoringData.notes,
+          updatedAt: scoringData.updated_at,
+          updatedBy: scoringData.updated_by ?? undefined,
+        });
+      }
+
+      // 5. Fetch leaderboard rank from public_leaderboard view
+      const { data: leaderboardData } = await supabase
+        .from("public_leaderboard")
+        .select("volunteer_id, rank")
+        .eq("volunteer_id", user.id)
+        .single();
+
+      if (leaderboardData?.rank) {
+        setVolunteerRank(leaderboardData.rank);
+      }
+    } catch {
+      setFetchError("An unexpected error occurred while connecting to the database.");
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Compute live scoring from trusted database records & active scoring policy
   const summary = useMemo(() => {
-    return calculateVolunteerSummary(referrals);
-  }, [referrals]);
+    return calculateVolunteerSummary(referrals, scoringConfig);
+  }, [referrals, scoringConfig]);
 
   // Filtered referrals list
   const filteredReferrals = useMemo(() => {
@@ -52,8 +176,8 @@ export default function VolunteerDashboardPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Handle submission of new referral claim
-  const handleCreateReferral = (e: React.FormEvent) => {
+  // Handle submission of new referral claim directly to Supabase
+  const handleCreateReferral = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrorMessage(null);
 
@@ -63,67 +187,147 @@ export default function VolunteerDashboardPage() {
       return;
     }
 
+    if (!profile?.id) {
+      setFormErrorMessage("Session expired. Please refresh the page.");
+      return;
+    }
+
     const safeQty = Math.min(50, Math.max(1, Number(formQuantity) || 1));
-    const normalizedIdentifier = formIdentifier.toLowerCase().trim();
-    const normalizedBuyerName = trimmedBuyer.toLowerCase();
+    const cleanOrderRef = formIdentifier.trim();
+    const cleanBuyerEmail = formBuyerEmail.trim();
 
-    setIsSubmitting(true);
+    try {
+      setIsSubmitting(true);
+      const supabase = createClient();
 
-    setTimeout(() => {
-      // Check 1: Reliable identifier match
-      const matchedByIdentifier = Boolean(
-        normalizedIdentifier &&
-          referrals.some(
-            (r) =>
-              r.buyerIdentifier &&
-              r.buyerIdentifier.toLowerCase().trim() === normalizedIdentifier
-          )
+      // Authoritative submission via public.submit_referral RPC
+      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+        "submit_referral",
+        {
+          p_buyer_name: trimmedBuyer,
+          p_ticket_type: formTicketType,
+          p_ticket_quantity: safeQty,
+          p_order_reference: cleanOrderRef || null,
+          p_buyer_email: cleanBuyerEmail || null,
+        }
       );
 
-      // Check 2: Buyer name match (flagged for manual review only)
-      const matchedByName = Boolean(
-        normalizedBuyerName &&
-          referrals.some(
-            (r) => r.buyerName.toLowerCase().trim() === normalizedBuyerName
-          )
-      );
+      if (rpcError) {
+        if (
+          rpcError.code === "23505" ||
+          rpcError.message?.includes("DUPLICATE_ORDER_REFERENCE") ||
+          rpcError.message?.includes("idx_unique_all_order_reference")
+        ) {
+          setFormErrorMessage(
+            "This order reference has already been submitted by another claim and cannot be credited again."
+          );
+        } else {
+          setFormErrorMessage(rpcError.message || "Failed to submit referral. Please try again.");
+        }
+        return;
+      }
 
-      const isDuplicate = matchedByIdentifier || matchedByName;
-      const duplicateReason = matchedByIdentifier
-        ? "Purchase identifier matches existing referral claim"
-        : matchedByName
-        ? "Matching buyer name detected; requires organizer reconciliation"
-        : undefined;
+      // Check explicit RPC success flag
+      if (!rpcResult?.success) {
+        setFormErrorMessage(
+          rpcResult?.message ||
+            "This order reference has already been submitted by another claim and cannot be credited again."
+        );
+        return;
+      }
 
+      const inserted = rpcResult.referral;
       const newRecord: ReferralRecord = {
-        id: `ref-local-${Date.now()}`,
-        volunteerId: MOCK_VOLUNTEER_USER.id,
-        volunteerName: MOCK_VOLUNTEER_USER.fullName,
-        volunteerTeam: MOCK_VOLUNTEER_USER.volunteerTeam,
-        buyerName: trimmedBuyer,
-        ticketType: formTicketType,
-        ticketQuantity: safeQty,
-        buyerIdentifier: formIdentifier.trim(),
-        status: "pending",
-        flaggedDuplicate: isDuplicate,
-        duplicateReason,
-        adminNotes: isDuplicate ? `Flagged: ${duplicateReason}` : undefined,
-        createdAt: new Date().toISOString(),
+        id: inserted.id,
+        volunteerId: inserted.volunteer_id,
+        volunteerName: profile.fullName,
+        volunteerTeam: profile.volunteerTeam,
+        buyerName: inserted.buyer_name,
+        ticketType: inserted.ticket_type,
+        ticketQuantity: inserted.ticket_quantity,
+        buyerIdentifier: inserted.order_reference || inserted.buyer_identifier || undefined,
+        orderReference: inserted.order_reference || inserted.buyer_identifier || undefined,
+        buyerEmail: inserted.buyer_email || undefined,
+        status: inserted.status,
+        flaggedDuplicate: inserted.flagged_duplicate ?? false,
+        duplicateReason: inserted.duplicate_reason ?? undefined,
+        duplicateSourceId: inserted.duplicate_source_id ?? undefined,
+        adminNotes: inserted.admin_notes ?? undefined,
+        createdAt: inserted.created_at,
       };
 
       setReferrals((prev) => [newRecord, ...prev]);
-      setIsSubmitting(false);
       setFormSuccessState(true);
-
-      // Trigger celebratory confetti burst ONLY upon successful submission
       triggerConfetti({ type: "referral" });
 
-      // Reset form input fields
+      // Reset form inputs
       setFormBuyerName("");
       setFormIdentifier("");
+      setFormBuyerEmail("");
       setFormQuantity(1);
-    }, 300);
+    } catch {
+      setFormErrorMessage("An unexpected error occurred during submission.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+        {/* Skeleton Header */}
+        <div className="border-b border-zinc-800/80 pb-6 space-y-3 animate-pulse">
+          <div className="h-8 w-64 bg-zinc-800/60 rounded" />
+          <div className="h-4 w-48 bg-zinc-800/40 rounded" />
+        </div>
+
+        {/* Skeleton Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="border border-zinc-800/80 rounded p-4 bg-[#111114] animate-pulse space-y-3"
+            >
+              <div className="h-3 w-24 bg-zinc-800/60 rounded" />
+              <div className="h-8 w-16 bg-zinc-800/40 rounded" />
+              <div className="h-3 w-32 bg-zinc-800/40 rounded" />
+            </div>
+          ))}
+        </div>
+
+        {/* Skeleton Table */}
+        <div className="border border-zinc-800/80 rounded bg-[#111114] p-6 animate-pulse space-y-4">
+          <div className="h-5 w-40 bg-zinc-800/60 rounded" />
+          <div className="h-32 bg-zinc-800/20 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError || !profile) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="border border-red-800/50 bg-red-950/20 rounded p-6 text-center space-y-4 max-w-md mx-auto">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-white">
+              Unable to Load Volunteer Data
+            </h3>
+            <p className="text-xs text-zinc-400">
+              {fetchError || "Could not retrieve your profile. Please check your connection."}
+            </p>
+          </div>
+          <button
+            onClick={() => loadDashboardData()}
+            className="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-white transition-all"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
@@ -134,11 +338,15 @@ export default function VolunteerDashboardPage() {
             Volunteer Dashboard
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mt-1">
-            <span className="text-zinc-200 font-medium">{MOCK_VOLUNTEER_USER.fullName}</span>
+            <span className="text-zinc-200 font-medium">{profile.fullName}</span>
             <span>·</span>
-            <span>{getSafeVolunteerTeam(MOCK_VOLUNTEER_USER.volunteerTeam)}</span>
-            <span>·</span>
-            <span className="text-zinc-500 font-mono">Rank #6</span>
+            <span>{getSafeVolunteerTeam(profile.volunteerTeam)}</span>
+            {volunteerRank !== null && (
+              <>
+                <span>·</span>
+                <span className="text-zinc-500 font-mono">Rank #{volunteerRank}</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -167,7 +375,7 @@ export default function VolunteerDashboardPage() {
             {summary.points} <span className="text-xs font-normal text-zinc-500">pts</span>
           </div>
           <div className="text-[11px] text-zinc-500 mt-1">
-            Provisional rule: 1 pt per 2 verified tickets
+            Official rule: {scoringConfig.pointsPerTicket} pts per verified ticket
           </div>
         </div>
 
@@ -306,7 +514,14 @@ export default function VolunteerDashboardPage() {
                         {r.ticketQuantity}
                       </td>
                       <td className="py-3 px-4 font-mono text-zinc-400 text-[11px]">
-                        <div>{r.buyerIdentifier || "—"}</div>
+                        <div>
+                          {r.orderReference || (r.buyerIdentifier && !r.buyerIdentifier.includes("@") ? r.buyerIdentifier : "—")}
+                        </div>
+                        {(r.buyerEmail || (r.buyerIdentifier && r.buyerIdentifier.includes("@"))) && (
+                          <div className="text-[10px] text-zinc-500 font-sans truncate max-w-[140px]">
+                            {r.buyerEmail || r.buyerIdentifier}
+                          </div>
+                        )}
                         {r.flaggedDuplicate && (
                           <div className="text-[10px] text-amber-500 mt-0.5">
                             Duplicate flagged
@@ -384,7 +599,7 @@ export default function VolunteerDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {PROMOTIONAL_TEMPLATES.map((tpl) => {
             const compiledMessage = tpl.content(
-              MOCK_VOLUNTEER_USER.fullName,
+              profile.fullName,
               CONFERENCE_CONFIG.ticketUrl
             );
             const isCopied = copiedId === tpl.id;
@@ -553,17 +768,33 @@ export default function VolunteerDashboardPage() {
 
                 <div>
                   <label className="block font-medium text-zinc-300 mb-1">
-                    Buyer Identifier / Order Reference
+                    Order Reference / Ticket ID
                   </label>
                   <input
                     type="text"
-                    placeholder="Order ID, phone, or email"
+                    placeholder="e.g. MTR-TX-99014"
                     value={formIdentifier}
                     onChange={(e) => setFormIdentifier(e.target.value)}
                     className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
                   />
                   <span className="text-[11px] text-zinc-500 block mt-1">
-                    Used by admins to match records on Meeteor Hub.
+                    Unique order or ticket ID from Meeteor Hub.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-zinc-300 mb-1">
+                    Buyer Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. buyer@example.com"
+                    value={formBuyerEmail}
+                    onChange={(e) => setFormBuyerEmail(e.target.value)}
+                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                  />
+                  <span className="text-[11px] text-zinc-500 block mt-1">
+                    Used to reconcile ticket confirmations and flag multi-purchase claims.
                   </span>
                 </div>
 

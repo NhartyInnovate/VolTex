@@ -4,6 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { VOLUNTEER_TEAMS } from "@/config/constants";
 import { triggerConfetti } from "@/lib/confetti";
+import { createClient } from "@/lib/supabase/client";
+import { getAppUrl } from "@/lib/utils";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -15,35 +18,87 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
     // Form validation check
+    const trimmedFullName = formData.fullName.trim();
+    const trimmedPhone = formData.phoneNumber.trim();
+    const trimmedEmail = formData.email.trim();
+
+    if (!trimmedFullName) {
+      setErrorMessage("Please enter your full name.");
+      return;
+    }
+
+    if (!trimmedPhone) {
+      setErrorMessage("Please enter your phone number.");
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+
+    if (formData.password.length < 10) {
+      setErrorMessage("Password must be at least 10 characters long.");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setErrorMessage("Passwords do not match.");
       return;
     }
 
-    if (formData.password.length < 6) {
-      setErrorMessage("Password must be at least 6 characters.");
-      return;
-    }
-
     setIsSubmitting(true);
 
-    // Brief simulated dispatch to show responsive interaction
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitted(true);
+    try {
+      const supabase = createClient();
+      const appUrl = getAppUrl();
+      const redirectUrl = `${appUrl}/auth/callback?next=/dashboard`;
 
-      // Trigger celebration ONLY upon verified success
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: trimmedFullName,
+            phone_number: trimmedPhone,
+            volunteer_team: formData.volunteerTeam,
+          },
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check whether session exists immediately or email confirmation is required
+      // If user is returned without a session, Supabase email confirmation is enabled
+      const userRequiresConfirmation = Boolean(data.user && !data.session);
+      setNeedsEmailConfirmation(userRequiresConfirmation);
+      setSubmitted(true);
+      setIsSubmitting(false);
+
+      // Trigger celebration upon successful registration
       triggerConfetti({ type: "registration" });
-    }, 350);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected registration error occurred.";
+      setErrorMessage(msg);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -72,21 +127,23 @@ export default function RegisterPage() {
                   You&apos;re in. Welcome to the challenge.
                 </h2>
                 <p className="text-zinc-400 leading-relaxed text-xs">
-                  You&apos;re now part of the team helping bring more people to TEDxGwarinpa.
+                  {needsEmailConfirmation
+                    ? "A verification link has been sent to your email address. Please click the link to confirm your account and sign in."
+                    : "You're now registered and part of the team helping bring more people to TEDxGwarinpa."}
                 </p>
               </div>
 
               <div className="text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/60">
-                Demo Preview: Registration simulated for team{" "}
+                Registered for:{" "}
                 <span className="text-zinc-300 font-medium">{formData.volunteerTeam}</span>.
               </div>
 
               <div className="pt-2">
                 <Link
-                  href="/dashboard"
-                  className="block text-center w-full py-2.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.99] text-white font-semibold transition-all"
+                  href="/auth/login"
+                  className="block text-center w-full py-2.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.99] text-white font-semibold transition-all shadow-xs"
                 >
-                  Go to Dashboard
+                  Proceed to Sign In
                 </Link>
               </div>
             </div>
@@ -175,18 +232,29 @@ export default function RegisterPage() {
               {/* Password */}
               <div>
                 <label className="block font-medium text-zinc-300 mb-1">
-                  Password
+                  Password (minimum 10 characters)
                 </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={10}
+                    placeholder="••••••••••••"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {/* Confirm Password */}
@@ -194,19 +262,30 @@ export default function RegisterPage() {
                 <label className="block font-medium text-zinc-300 mb-1">
                   Confirm Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      confirmPassword: e.target.value,
-                    })
-                  }
-                  className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    minLength={10}
+                    placeholder="••••••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="pt-2">

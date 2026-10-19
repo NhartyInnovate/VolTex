@@ -11,7 +11,7 @@ export const CONFERENCE_CONFIG = {
     process.env.NEXT_PUBLIC_TICKET_URL ||
     "https://meeteor.me/clip/join?eventId=DSVXOF",
   scoring: {
-    ticketsPerPoint: 2,
+    pointsPerTicket: 5,
   },
 } as const;
 
@@ -46,18 +46,17 @@ export function getSafeVolunteerTeam(team?: string | null): string {
 }
 
 /**
- * Provisional scoring configuration.
- * The organizing committee has not yet finalized point policies;
- * this structure serves as the configurable baseline.
+ * Scoring configuration.
+ * Default official rule: 5 points awarded per verified ticket.
+ * Configurable by admins with full database-level verification.
  */
 export const DEFAULT_SCORING_CONFIG = {
-  id: "provisional-config-01",
-  ticketsPerPoint: 2,
-  enableCarryover: true,
-  status: "draft" as "draft" | "active" | "archived",
-  label: "Provisional Demo Policy (Pending Final Committee Ratification)",
-  notes: "Provisional development ratio: 1 point per 2 verified tickets. Leadership agreement pending.",
-  updatedAt: "2026-10-18T12:00:00Z",
+  id: "official-config-01",
+  pointsPerTicket: 5,
+  status: "active" as "draft" | "active" | "archived",
+  label: "Official Scoring Policy (5 Points per Verified Ticket)",
+  notes: "5 points awarded strictly upon admin verification of each ticket on Meeteor Hub.",
+  updatedAt: "2026-10-19T10:00:00Z",
   updatedBy: "Organizing Committee",
 };
 

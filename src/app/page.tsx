@@ -4,12 +4,14 @@ import { CONFERENCE_CONFIG } from "@/config/constants";
 import { MOCK_PUBLIC_LEADERBOARD } from "@/data/mock-data";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { MotionReveal } from "@/components/MotionReveal";
+import { HeroParticleNetwork } from "@/components/HeroParticleNetwork";
 
 export default function HomePage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-24">
       {/* 1. Hero Section with Timed Entrance and Signature Movement */}
-      <section className="space-y-6">
+      <section className="relative space-y-6">
+        <HeroParticleNetwork />
         {/* Category Header */}
         <div className="overflow-hidden">
           <span className="inline-block font-mono text-[11px] text-zinc-500 uppercase tracking-widest animate-hero-line-1">
@@ -123,7 +125,7 @@ export default function HomePage() {
               Scoring & Leaderboard
             </h2>
             <p className="text-xs text-zinc-400 mt-1">
-              Points are calculated strictly from verified, paid ticket records under a provisional development model pending final committee ratification.
+              Points are calculated strictly from verified, paid ticket records (5 points per ticket) following admin reconciliation against Meeteor Hub.
             </p>
           </div>
 
@@ -131,18 +133,18 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="border border-zinc-800/80 rounded p-4 bg-[#111114] hover:border-zinc-700/80 transition-colors">
               <div className="font-semibold text-white mb-1">
-                1 Point = 2 Verified Tickets (Provisional)
+                5 Points = 1 Verified Ticket
               </div>
               <p className="text-zinc-400 leading-relaxed">
-                Every pair of paid delegate tickets confirmed on Meeteor Hub awards one official point.
+                Every delegate ticket confirmed on Meeteor Hub awards 5 official points to the referring volunteer.
               </p>
             </div>
             <div className="border border-zinc-800/80 rounded p-4 bg-[#111114] hover:border-zinc-700/80 transition-colors">
               <div className="font-semibold text-white mb-1">
-                Odd-Ticket Carryover (Provisional)
+                Admin Reconciled
               </div>
               <p className="text-zinc-400 leading-relaxed">
-                Odd ticket balances carry over toward your next point (e.g. 3 verified tickets = 1 point and 1 carryover ticket).
+                Referrals are cross-referenced with official ticket purchase records before points and leaderboard positions are credited.
               </p>
             </div>
           </div>

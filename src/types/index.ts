@@ -8,8 +8,9 @@ export type ScoringPolicyStatus = "draft" | "active" | "archived";
 
 export interface ScoringConfig {
   id: string;
-  ticketsPerPoint: number;
-  enableCarryover: boolean;
+  pointsPerTicket: number;
+  ticketsPerPoint?: number;
+  enableCarryover?: boolean;
   status: ScoringPolicyStatus;
   label?: string;
   notes?: string;
@@ -35,7 +36,9 @@ export interface ReferralRecord {
   buyerName: string;
   ticketType: TicketType | string;
   ticketQuantity: number;
-  buyerIdentifier?: string; // Order ref, phone, or email
+  buyerIdentifier?: string; // Order ref, phone, or email (legacy)
+  orderReference?: string;
+  buyerEmail?: string;
   status: ReferralStatus;
   adminNotes?: string;
   flaggedDuplicate: boolean;

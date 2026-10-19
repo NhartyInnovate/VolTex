@@ -191,7 +191,7 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Ngozi Eze",
     volunteerTeam: "Sponsorship and Partnership Team",
     verifiedTickets: 14,
-    points: 7, // 14 / 2 = 7 pts
+    points: 70, // 14 * 5 = 70 pts
     carryoverTickets: 0,
     rank: 1,
   },
@@ -200,8 +200,8 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Tunde Bakare",
     volunteerTeam: "Protocol/Ushering/Logistics Team",
     verifiedTickets: 11,
-    points: 5, // 11 / 2 = 5 pts, 1 carryover
-    carryoverTickets: 1,
+    points: 55, // 11 * 5 = 55 pts
+    carryoverTickets: 0,
     rank: 2,
   },
   {
@@ -209,7 +209,7 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Danladi Musa",
     volunteerTeam: "Volunteer Management Team",
     verifiedTickets: 8,
-    points: 4, // 8 / 2 = 4 pts
+    points: 40, // 8 * 5 = 40 pts
     carryoverTickets: 0,
     rank: 3,
   },
@@ -218,8 +218,8 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Chioma Okoli",
     volunteerTeam: "Curation/Programs Team",
     verifiedTickets: 7,
-    points: 3, // 7 / 2 = 3 pts, 1 carryover
-    carryoverTickets: 1,
+    points: 35, // 7 * 5 = 35 pts
+    carryoverTickets: 0,
     rank: 4,
   },
   {
@@ -227,7 +227,7 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Victor Kalu",
     volunteerTeam: "TEDxGwarinpa Novelty Match ⚽",
     verifiedTickets: 4,
-    points: 2,
+    points: 20, // 4 * 5 = 20 pts
     carryoverTickets: 0,
     rank: 5,
   },
@@ -236,8 +236,8 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Amina Bello",
     volunteerTeam: "Public Relation (PR) Team",
     verifiedTickets: 3,
-    points: 1, // 3 / 2 = 1 pt, 1 carryover
-    carryoverTickets: 1,
+    points: 15, // 3 * 5 = 15 pts
+    carryoverTickets: 0,
     rank: 6,
   },
   {
@@ -245,7 +245,7 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Ibrahim Sanusi",
     volunteerTeam: "Technical/Sound Team",
     verifiedTickets: 2,
-    points: 1,
+    points: 10, // 2 * 5 = 10 pts
     carryoverTickets: 0,
     rank: 7,
   },
@@ -254,8 +254,8 @@ export const MOCK_PUBLIC_LEADERBOARD: LeaderboardEntry[] = [
     fullName: "Folake Adeyemi",
     volunteerTeam: "Photography and Videography Team",
     verifiedTickets: 1,
-    points: 0, // 1 / 2 = 0 pts, 1 carryover
-    carryoverTickets: 1,
+    points: 5, // 1 * 5 = 5 pts
+    carryoverTickets: 0,
     rank: 8,
   },
   {

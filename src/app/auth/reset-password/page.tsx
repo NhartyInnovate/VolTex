@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { LoadingSpinner, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -130,22 +131,22 @@ export default function ResetPasswordPage() {
     <div className="min-h-[calc(100vh-14rem)] flex items-center justify-center py-12 px-4 sm:px-6">
       <div className="max-w-sm w-full space-y-6 animate-subtle-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Set new password
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
             Choose a secure new password for your TEDxGwarinpa volunteer account.
           </p>
         </div>
 
-        <div className="border border-zinc-800/80 rounded p-6 bg-[#111114] space-y-4">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-6 bg-white dark:bg-[#111114] shadow-xs space-y-4">
           {isSuccess ? (
             <div className="py-2 space-y-3 text-xs animate-subtle-fade-up">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>Password Updated Successfully</span>
               </div>
-              <p className="text-zinc-400 leading-relaxed">
+              <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Your password has been securely updated. Redirecting you to sign in...
               </p>
               <div className="pt-2">
@@ -161,7 +162,7 @@ export default function ResetPasswordPage() {
             <div className="py-2 space-y-3 text-xs animate-subtle-fade-up">
               <div
                 role="alert"
-                className="border border-red-800/60 bg-red-950/40 text-red-300 p-3 rounded text-[11px] leading-relaxed"
+                className="border border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 p-3 rounded text-[11px] leading-relaxed"
               >
                 {errorMessage || "No active password recovery session was found, or your recovery link has expired or already been consumed."}
               </div>
@@ -174,7 +175,7 @@ export default function ResetPasswordPage() {
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="text-center text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="text-center text-[11px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                 >
                   Return to Sign In
                 </Link>
@@ -185,7 +186,7 @@ export default function ResetPasswordPage() {
               {errorMessage && (
                 <div
                   role="alert"
-                  className="border border-red-800/60 bg-red-950/40 text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
+                  className="border border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
                 >
                   {errorMessage}
                 </div>
@@ -193,7 +194,7 @@ export default function ResetPasswordPage() {
 
               {/* New Password */}
               <div>
-                <label className="block font-medium text-zinc-300 mb-1">
+                <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   New Password (minimum 10 characters)
                 </label>
                 <div className="relative">
@@ -204,12 +205,12 @@ export default function ResetPasswordPage() {
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -219,7 +220,7 @@ export default function ResetPasswordPage() {
 
               {/* Confirm Password */}
               <div>
-                <label className="block font-medium text-zinc-300 mb-1">
+                <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Confirm New Password
                 </label>
                 <div className="relative">
@@ -230,12 +231,12 @@ export default function ResetPasswordPage() {
                     placeholder="••••••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -247,16 +248,23 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all disabled:opacity-50 shadow-xs"
+                  className="w-full py-2.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all disabled:opacity-50 shadow-xs flex items-center justify-center"
                 >
-                  {isSubmitting ? "Updating password..." : "Save New Password"}
+                  <span>{isSubmitting ? "Updating password..." : "Save New Password"}</span>
                 </button>
               </div>
+
+              {isSubmitting && (
+                <CenteredProcessingOverlay
+                  message="Updating password..."
+                  label="Updating account password"
+                />
+              )}
 
               <div className="text-center pt-2">
                 <Link
                   href="/auth/login"
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="text-[11px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                 >
                   Cancel and Return to Sign In
                 </Link>

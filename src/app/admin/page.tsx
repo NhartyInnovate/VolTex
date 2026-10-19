@@ -17,6 +17,7 @@ import {
   LeaderboardEntry,
 } from "@/types";
 import { formatDateTime } from "@/lib/utils";
+import { LoadingSpinner, FullPageLoader } from "@/components/LoadingSpinner";
 import {
   Search,
   X,
@@ -515,20 +516,11 @@ export default function AdminDashboardPage() {
   // Loading State
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-6">
-        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-6">
-          <div className="space-y-2">
-            <div className="h-7 w-48 bg-zinc-800/60 rounded animate-pulse" />
-            <div className="h-4 w-72 bg-zinc-800/40 rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-zinc-900/60 border border-zinc-800/60 rounded p-4 animate-pulse" />
-          ))}
-        </div>
-        <div className="h-64 bg-zinc-900/40 border border-zinc-800/60 rounded animate-pulse" />
-      </div>
+      <FullPageLoader
+        message="Loading admin command center..."
+        subMessage="Retrieving challenge metrics and live database audit trail..."
+        label="Loading admin command center"
+      />
     );
   }
 
@@ -536,22 +528,22 @@ export default function AdminDashboardPage() {
   if (fetchError) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="border border-red-800/60 bg-red-950/30 rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3 text-red-400">
+        <div className="border border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/30 rounded-lg p-6 space-y-4">
+          <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
             <AlertCircle className="w-5 h-5 shrink-0" />
             <h2 className="text-base font-bold">Admin Data Access Error</h2>
           </div>
-          <p className="text-xs text-red-200/80 leading-relaxed">{fetchError}</p>
+          <p className="text-xs text-red-700 dark:text-red-200/80 leading-relaxed">{fetchError}</p>
           <div className="pt-2 flex items-center gap-3">
             <button
               onClick={() => loadAdminData()}
-              className="px-3.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white transition-all flex items-center gap-2"
+              className="px-3.5 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 text-xs font-semibold transition-all flex items-center gap-2"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Retry
             </button>
             <button
               onClick={() => router.push("/dashboard")}
-              className="px-3.5 py-1.5 rounded border border-zinc-800 text-xs font-medium text-zinc-400 hover:text-white transition-all"
+              className="px-3.5 py-1.5 rounded border border-zinc-300 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
             >
               Return to Volunteer Dashboard
             </button>
@@ -562,19 +554,19 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
       {/* 1. Header with Live Status & Refresh */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-800/80 pb-6 animate-subtle-fade-up">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-6 animate-subtle-fade-up">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
               Admin Command Center
             </h1>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded border bg-emerald-950/40 text-emerald-400 border-emerald-800/40">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded border bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/40 font-medium">
               Live Database
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
             Reconcile submitted claims, audit duplicates, configure scoring policy, and monitor live challenge operations.
           </p>
         </div>
@@ -583,7 +575,7 @@ export default function AdminDashboardPage() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white px-2.5 py-1.5 rounded border border-zinc-800 hover:border-zinc-700 bg-[#111114] transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1.5 rounded border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white dark:bg-[#111114] shadow-xs transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
@@ -592,7 +584,7 @@ export default function AdminDashboardPage() {
             href={CONFERENCE_CONFIG.ticketUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-zinc-300 hover:text-white underline underline-offset-4 transition-all"
+            className="text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white underline underline-offset-4 transition-all"
           >
             Meeteor Hub ↗
           </a>
@@ -602,85 +594,85 @@ export default function AdminDashboardPage() {
       {/* 2. Top-Level Genuine Platform Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
         {/* Total Volunteers */}
-        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-75 hover:border-zinc-700/80 transition-colors">
-          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between">
-            Volunteers <Users className="w-3 h-3 text-zinc-500" />
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-75 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
+            Volunteers <Users className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
           </span>
-          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
+          <span className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block">
             {stats.totalVolunteers}
           </span>
         </div>
 
         {/* Total Referrals */}
-        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-100 hover:border-zinc-700/80 transition-colors">
-          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between">
-            Claims <Ticket className="w-3 h-3 text-zinc-500" />
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-100 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
+            Claims <Ticket className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
           </span>
-          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
+          <span className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block">
             {stats.totalReferrals}
           </span>
         </div>
 
         {/* Pending Review */}
-        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-150 hover:border-zinc-700/80 transition-colors">
-          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-150 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Pending <Clock className="w-3 h-3 text-amber-500" />
           </span>
-          <span className="text-xl font-bold font-mono text-amber-400 mt-1 block">
+          <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1 block">
             {stats.pending}
           </span>
         </div>
 
         {/* Duplicate Flags */}
-        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-200 hover:border-zinc-700/80 transition-colors">
-          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-200 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Duplicates <ShieldAlert className="w-3 h-3 text-amber-500" />
           </span>
-          <span className={`text-xl font-bold font-mono mt-1 block ${stats.duplicates > 0 ? "text-amber-400" : "text-zinc-100"}`}>
+          <span className={`text-xl font-bold font-mono mt-1 block ${stats.duplicates > 0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100"}`}>
             {stats.duplicates}
           </span>
         </div>
 
         {/* Verified Tickets */}
-        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-250 hover:border-zinc-700/80 transition-colors">
-          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-250 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Approved Tix <CheckCircle2 className="w-3 h-3 text-emerald-500" />
           </span>
-          <span className="text-xl font-bold font-mono text-emerald-400 mt-1 block">
+          <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1 block">
             {stats.totalApprovedTickets}
           </span>
         </div>
 
         {/* Points Awarded */}
-        <div className="border border-zinc-800/80 rounded p-3 bg-[#111114] animate-subtle-fade-up delay-300 hover:border-zinc-700/80 transition-colors">
-          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-300 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+          <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Points Awarded <Trophy className="w-3 h-3 text-tedx-red" />
           </span>
-          <span className="text-xl font-bold font-mono text-zinc-100 mt-1 block">
+          <span className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block">
             {stats.totalPointsAwarded} <span className="text-[10px] font-normal text-zinc-500">pts</span>
           </span>
         </div>
       </div>
 
       {/* 3. Navigation Tabs */}
-      <div className="flex border-b border-zinc-800 text-xs">
+      <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 text-xs no-scrollbar">
         <button
           onClick={() => setActiveTab("referrals")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
             activeTab === "referrals"
-              ? "border-tedx-red text-white"
-              : "border-transparent text-zinc-400 hover:text-zinc-200"
+              ? "border-tedx-red text-tedx-red dark:text-white"
+              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <Ticket className="w-3.5 h-3.5" />
-          Referral Verification Queue ({referrals.length})
+          Referral Queue ({referrals.length})
         </button>
         <button
           onClick={() => setActiveTab("volunteers")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
             activeTab === "volunteers"
-              ? "border-tedx-red text-white"
-              : "border-transparent text-zinc-400 hover:text-zinc-200"
+              ? "border-tedx-red text-tedx-red dark:text-white"
+              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <Users className="w-3.5 h-3.5" />
@@ -688,10 +680,10 @@ export default function AdminDashboardPage() {
         </button>
         <button
           onClick={() => setActiveTab("teams")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
             activeTab === "teams"
-              ? "border-tedx-red text-white"
-              : "border-transparent text-zinc-400 hover:text-zinc-200"
+              ? "border-tedx-red text-tedx-red dark:text-white"
+              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <TrendingUp className="w-3.5 h-3.5" />
@@ -699,10 +691,10 @@ export default function AdminDashboardPage() {
         </button>
         <button
           onClick={() => setActiveTab("settings")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
             activeTab === "settings"
-              ? "border-tedx-red text-white"
-              : "border-transparent text-zinc-400 hover:text-zinc-200"
+              ? "border-tedx-red text-tedx-red dark:text-white"
+              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <Settings2 className="w-3.5 h-3.5" />
@@ -752,15 +744,15 @@ export default function AdminDashboardPage() {
                   onClick={() => setSelectedStatus(st.key)}
                   className={`px-2.5 py-1 rounded transition-colors ${
                     selectedStatus === st.key
-                      ? "bg-zinc-800 text-white font-medium shadow-xs"
-                      : "text-zinc-500 hover:text-zinc-300"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-800 dark:text-white font-medium shadow-xs"
+                      : "text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
                   }`}
                 >
                   {st.label} ({st.count})
                 </button>
               ))}
 
-              <span className="text-zinc-700 mx-1">|</span>
+              <span className="text-zinc-300 dark:text-zinc-700 mx-1">|</span>
 
               {/* Duplicate Filter */}
               <div className="flex items-center gap-1">
@@ -768,8 +760,8 @@ export default function AdminDashboardPage() {
                   onClick={() => setDuplicateFilter(duplicateFilter === "flagged" ? "all" : "flagged")}
                   className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 ${
                     duplicateFilter === "flagged"
-                      ? "bg-amber-950/60 text-amber-300 border border-amber-800/60 font-medium"
-                      : "text-zinc-500 hover:text-zinc-300"
+                      ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 font-medium"
+                      : "text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
                   }`}
                 >
                   <ShieldAlert className="w-3 h-3 text-amber-500" />
@@ -780,23 +772,23 @@ export default function AdminDashboardPage() {
 
             {/* Search */}
             <div className="relative w-full md:w-72">
-              <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search buyer, email, ref, volunteer..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#111114] border border-zinc-800 rounded pl-8 pr-3 py-1.5 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition-colors text-xs"
+                className="w-full bg-white dark:bg-[#111114] border border-zinc-300 dark:border-zinc-800 rounded pl-8 pr-3 py-1.5 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors text-xs"
               />
             </div>
           </div>
 
           {/* Referral Table */}
-          <div className="border border-zinc-800/80 rounded bg-[#111114] overflow-hidden">
+          <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-[#0e0e11]">
+                  <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
                     <th className="py-2.5 px-4">Volunteer</th>
                     <th className="py-2.5 px-4">Buyer Details</th>
                     <th className="py-2.5 px-4">Ticket</th>
@@ -805,7 +797,7 @@ export default function AdminDashboardPage() {
                     <th className="py-2.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/60 font-sans">
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
                   {filteredReferrals.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-zinc-500">
@@ -818,13 +810,13 @@ export default function AdminDashboardPage() {
                     filteredReferrals.map((r) => (
                       <tr
                         key={r.id}
-                        className={`hover:bg-zinc-800/20 transition-colors ${
-                          r.flaggedDuplicate ? "bg-amber-950/10" : ""
+                        className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors ${
+                          r.flaggedDuplicate ? "bg-amber-50/50 dark:bg-amber-950/10" : ""
                         }`}
                       >
                         {/* Volunteer */}
                         <td className="py-3 px-4">
-                          <div className="font-medium text-zinc-200">
+                          <div className="font-medium text-zinc-900 dark:text-zinc-200">
                             {r.volunteerName}
                           </div>
                           <div className="text-[11px] text-zinc-500">
@@ -834,7 +826,7 @@ export default function AdminDashboardPage() {
 
                         {/* Buyer */}
                         <td className="py-3 px-4">
-                          <div className="font-medium text-zinc-200">
+                          <div className="font-medium text-zinc-900 dark:text-zinc-200">
                             {r.buyerName}
                           </div>
                           <div className="text-[10px] text-zinc-500 font-mono">
@@ -844,28 +836,28 @@ export default function AdminDashboardPage() {
 
                         {/* Ticket */}
                         <td className="py-3 px-4">
-                          <span className="font-mono font-medium text-zinc-200 mr-1.5">
+                          <span className="font-mono font-medium text-zinc-900 dark:text-zinc-200 mr-1.5">
                             {r.ticketQuantity}x
                           </span>
-                          <span className="text-zinc-400">{r.ticketType}</span>
+                          <span className="text-zinc-600 dark:text-zinc-400">{r.ticketType}</span>
                         </td>
 
                         {/* Order Ref & Buyer Email */}
                         <td className="py-3 px-4 font-mono text-[11px]">
                           {r.orderReference ? (
-                            <div className="text-zinc-200 font-semibold">
+                            <div className="text-zinc-900 dark:text-zinc-200 font-semibold">
                               {r.orderReference}
                             </div>
                           ) : (
-                            <div className="text-zinc-500 italic">No order ref</div>
+                            <div className="text-zinc-400 dark:text-zinc-500 italic">No order ref</div>
                           )}
                           {r.buyerEmail && (
-                            <div className="text-[10px] text-zinc-400 font-sans mt-0.5">
+                            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans mt-0.5">
                               {r.buyerEmail}
                             </div>
                           )}
                           {!r.orderReference && !r.buyerEmail && r.buyerIdentifier && (
-                            <div className="text-[11px] text-zinc-400">
+                            <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
                               {r.buyerIdentifier}
                             </div>
                           )}
@@ -875,17 +867,17 @@ export default function AdminDashboardPage() {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-1.5">
                             {r.status === "approved" && (
-                              <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                              <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3" /> Approved
                               </span>
                             )}
                             {r.status === "pending" && (
-                              <span className="text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                              <span className="text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
                                 <Clock className="w-3 h-3" /> Pending
                               </span>
                             )}
                             {r.status === "rejected" && (
-                              <span className="text-red-400 bg-red-950/40 border border-red-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                              <span className="text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
                                 <XCircle className="w-3 h-3" /> Rejected
                               </span>
                             )}
@@ -893,8 +885,8 @@ export default function AdminDashboardPage() {
 
                           {/* Duplicate Warning Badge */}
                           {r.flaggedDuplicate && (
-                            <div className="mt-1 text-[10px] text-amber-400 flex items-center gap-1 bg-amber-950/30 border border-amber-800/40 px-1.5 py-0.5 rounded">
-                              <ShieldAlert className="w-3 h-3 text-amber-400 shrink-0" />
+                            <div className="mt-1 text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1 bg-amber-100 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/40 px-1.5 py-0.5 rounded">
+                              <ShieldAlert className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
                               <span>{r.duplicateReason || "Duplicate Flag"}</span>
                             </div>
                           )}
@@ -907,7 +899,7 @@ export default function AdminDashboardPage() {
                               setActiveReferral(r);
                               setDecisionNotes(r.adminNotes || "");
                             }}
-                            className="px-2.5 py-1 rounded border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition-colors text-xs"
+                            className="px-2.5 py-1 rounded border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors text-xs font-medium"
                           >
                             Review
                           </button>
@@ -919,9 +911,9 @@ export default function AdminDashboardPage() {
               </table>
             </div>
 
-            <div className="px-4 py-2.5 border-t border-zinc-800/80 bg-[#0e0e11] text-[11px] text-zinc-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+            <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
               <span>Showing {filteredReferrals.length} of {referrals.length} total claims from Supabase database.</span>
-              <span className="text-zinc-400">Scoring: {scoringConfig.pointsPerTicket} pts per approved ticket</span>
+              <span className="text-zinc-600 dark:text-zinc-400">Scoring: {scoringConfig.pointsPerTicket} pts per approved ticket</span>
             </div>
           </div>
         </div>
@@ -930,11 +922,11 @@ export default function AdminDashboardPage() {
       {/* 5. TAB 2: Volunteer Registry */}
       {activeTab === "volunteers" && (
         <div className="space-y-4 animate-subtle-fade-up">
-          <div className="border border-zinc-800/80 rounded bg-[#111114] overflow-hidden">
+          <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-[#0e0e11]">
+                  <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
                     <th className="py-2.5 px-4">Volunteer</th>
                     <th className="py-2.5 px-4">Team</th>
                     <th className="py-2.5 px-4">Contact</th>
@@ -943,7 +935,7 @@ export default function AdminDashboardPage() {
                     <th className="py-2.5 px-4 text-right">Registered</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/60 font-sans">
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
                   {volunteers.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-zinc-500">
@@ -958,20 +950,20 @@ export default function AdminDashboardPage() {
                         .reduce((sum, r) => sum + r.ticketQuantity, 0);
 
                       return (
-                        <tr key={vol.id} className="hover:bg-zinc-800/20 transition-colors">
-                          <td className="py-3 px-4 font-medium text-zinc-200">
+                        <tr key={vol.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
+                          <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200">
                             {vol.fullName}
                           </td>
-                          <td className="py-3 px-4 text-zinc-400">
+                          <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
                             {vol.volunteerTeam}
                           </td>
-                          <td className="py-3 px-4 font-mono text-[11px] text-zinc-400">
+                          <td className="py-3 px-4 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
                             {vol.phoneNumber || "—"}
                           </td>
-                          <td className="py-3 px-4 font-mono text-zinc-300">
+                          <td className="py-3 px-4 font-mono text-zinc-700 dark:text-zinc-300">
                             {volReferrals.length} claims
                           </td>
-                          <td className="py-3 px-4 font-mono font-medium text-emerald-400">
+                          <td className="py-3 px-4 font-mono font-medium text-emerald-600 dark:text-emerald-400">
                             {approvedTickets} tickets ({approvedTickets * (scoringConfig.pointsPerTicket || 5)} pts)
                           </td>
                           <td className="py-3 px-4 text-right text-[11px] text-zinc-500 font-mono">
@@ -985,7 +977,7 @@ export default function AdminDashboardPage() {
               </table>
             </div>
 
-            <div className="px-4 py-2.5 border-t border-zinc-800/80 bg-[#0e0e11] text-[11px] text-zinc-500">
+            <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500">
               {volunteers.length} verified volunteers registered on platform.
             </div>
           </div>
@@ -995,11 +987,11 @@ export default function AdminDashboardPage() {
       {/* 6. TAB 3: Team Performance Breakdown */}
       {activeTab === "teams" && (
         <div className="space-y-4 animate-subtle-fade-up">
-          <div className="border border-zinc-800/80 rounded bg-[#111114] overflow-hidden">
+          <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-[#0e0e11]">
+                  <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
                     <th className="py-2.5 px-4">Team</th>
                     <th className="py-2.5 px-4">Volunteers</th>
                     <th className="py-2.5 px-4">Submitted Tickets</th>
@@ -1007,7 +999,7 @@ export default function AdminDashboardPage() {
                     <th className="py-2.5 px-4 text-right">Points Earned</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/60 font-sans">
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
                   {teamPerformance.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-12 text-center text-zinc-500">
@@ -1016,20 +1008,20 @@ export default function AdminDashboardPage() {
                     </tr>
                   ) : (
                     teamPerformance.map((tp) => (
-                      <tr key={tp.teamName} className="hover:bg-zinc-800/20 transition-colors">
-                        <td className="py-3 px-4 font-medium text-zinc-200">
+                      <tr key={tp.teamName} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
+                        <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200">
                           {tp.teamName}
                         </td>
-                        <td className="py-3 px-4 font-mono text-zinc-300">
+                        <td className="py-3 px-4 font-mono text-zinc-700 dark:text-zinc-300">
                           {tp.volunteerCount} members
                         </td>
-                        <td className="py-3 px-4 font-mono text-zinc-400">
+                        <td className="py-3 px-4 font-mono text-zinc-600 dark:text-zinc-400">
                           {tp.submittedTickets} tix
                         </td>
-                        <td className="py-3 px-4 font-mono font-medium text-emerald-400">
+                        <td className="py-3 px-4 font-mono font-medium text-emerald-600 dark:text-emerald-400">
                           {tp.approvedTickets} tix ({tp.approvedReferrals} approved claims)
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-zinc-100">
+                        <td className="py-3 px-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
                           {tp.points} <span className="text-[10px] font-normal text-zinc-500">pts</span>
                         </td>
                       </tr>
@@ -1039,7 +1031,7 @@ export default function AdminDashboardPage() {
               </table>
             </div>
 
-            <div className="px-4 py-2.5 border-t border-zinc-800/80 bg-[#0e0e11] text-[11px] text-zinc-500">
+            <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500">
               Aggregated directly from registered volunteer profiles and approved referrals.
             </div>
           </div>
@@ -1048,19 +1040,19 @@ export default function AdminDashboardPage() {
 
       {/* 7. TAB 4: Scoring Settings Section */}
       {activeTab === "settings" && (
-        <div className="border border-zinc-800/80 rounded bg-[#111114] p-5 space-y-4 animate-subtle-fade-up">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/60 pb-3">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs p-5 space-y-4 animate-subtle-fade-up">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800/60 pb-3">
             <div>
               <div className="flex items-center gap-2.5">
-                <Settings2 className="w-4 h-4 text-zinc-400" />
-                <h2 className="text-sm font-bold text-white tracking-tight">
+                <Settings2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">
                   Scoring Policy Configuration
                 </h2>
                 <span
                   className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                     scoringConfig.status === "active"
-                      ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/40"
-                      : "bg-amber-950/40 text-amber-400 border-amber-800/40"
+                      ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/40 font-medium"
+                      : "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 border-amber-300 dark:border-amber-800/40 font-medium"
                   }`}
                 >
                   {scoringConfig.status === "active"
@@ -1068,7 +1060,7 @@ export default function AdminDashboardPage() {
                     : "Draft Status"}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-1">
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-1">
                 Governs points awarded to volunteers per verified ticket. Changes update the database in real time.
               </p>
             </div>
@@ -1080,7 +1072,7 @@ export default function AdminDashboardPage() {
                   setScoringConfigError(null);
                   setIsEditingScoring(true);
                 }}
-                className="text-xs font-medium px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-all"
+                className="text-xs font-medium px-3 py-1.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 transition-all border border-zinc-300 dark:border-transparent"
               >
                 Configure Policy
               </button>
@@ -1106,7 +1098,7 @@ export default function AdminDashboardPage() {
               {scoringConfigError && (
                 <div
                   role="alert"
-                  className="p-2.5 rounded border border-red-800/60 bg-red-950/40 text-red-300 text-[11px] flex items-center gap-2"
+                  className="p-2.5 rounded border border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-[11px] flex items-center gap-2"
                 >
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{scoringConfigError}</span>
@@ -1116,7 +1108,7 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Points awarded per verified ticket */}
                 <div>
-                  <label className="block font-medium text-zinc-300 mb-1">
+                  <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Points per Verified Ticket *
                   </label>
                   <input
@@ -1131,7 +1123,7 @@ export default function AdminDashboardPage() {
                         pointsPerTicket: parseInt(e.target.value) || 1,
                       })
                     }
-                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors font-mono"
+                    className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors font-mono"
                   />
                   <span className="text-[10px] text-zinc-500 mt-1 block">
                     Official conference challenge standard is 5 points per ticket.
@@ -1140,7 +1132,7 @@ export default function AdminDashboardPage() {
 
                 {/* Policy Status */}
                 <div>
-                  <label className="block font-medium text-zinc-300 mb-1">
+                  <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Scoring Policy Status *
                   </label>
                   <select
@@ -1151,7 +1143,7 @@ export default function AdminDashboardPage() {
                         status: e.target.value as "draft" | "active",
                       })
                     }
-                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-2.5 py-2 text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+                    className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-2.5 py-2 text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
                   >
                     <option value="active">Active (Live Calculations across all portals)</option>
                     <option value="draft">Draft (Held in Review)</option>
@@ -1163,7 +1155,7 @@ export default function AdminDashboardPage() {
 
                 {/* Policy Notes */}
                 <div>
-                  <label className="block font-medium text-zinc-300 mb-1">
+                  <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Policy Notes / Rationale
                   </label>
                   <input
@@ -1176,12 +1168,12 @@ export default function AdminDashboardPage() {
                         notes: e.target.value,
                       })
                     }
-                    className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-zinc-800/60">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800/60">
                 <span className="text-[11px] text-zinc-500">
                   Updates write directly to public.scoring_settings in Supabase.
                 </span>
@@ -1193,7 +1185,7 @@ export default function AdminDashboardPage() {
                       setIsEditingScoring(false);
                       setScoringConfigError(null);
                     }}
-                    className="px-3 py-1.5 rounded text-zinc-400 hover:text-white transition-colors"
+                    className="px-3 py-1.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-300 dark:border-transparent"
                   >
                     Cancel
                   </button>
@@ -1208,27 +1200,27 @@ export default function AdminDashboardPage() {
             </form>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-              <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
-                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
+              <div className="bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800/60 rounded p-3">
+                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-medium">
                   Point Formula
                 </span>
-                <span className="font-semibold text-zinc-200 mt-0.5 block font-mono">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-200 mt-0.5 block font-mono">
                   {scoringConfig.pointsPerTicket} Points per Verified Ticket
                 </span>
               </div>
-              <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
-                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
+              <div className="bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800/60 rounded p-3">
+                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-medium">
                   Verification Requirement
                 </span>
-                <span className="font-semibold text-zinc-200 mt-0.5 block">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-200 mt-0.5 block">
                   Admin approval against Meeteor Hub
                 </span>
               </div>
-              <div className="bg-[#09090b] border border-zinc-800/60 rounded p-3">
-                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block">
+              <div className="bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800/60 rounded p-3">
+                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-medium">
                   Database Record
                 </span>
-                <span className="font-semibold text-zinc-200 mt-0.5 block">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-200 mt-0.5 block">
                   Last updated: {formatDateTime(scoringConfig.updatedAt)}
                 </span>
               </div>
@@ -1239,75 +1231,75 @@ export default function AdminDashboardPage() {
 
       {/* 8. Reconcile / Review Modal */}
       {activeReferral && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-backdrop">
-          <div className="bg-[#111114] border border-zinc-800 rounded max-w-lg w-full p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <button
               onClick={() => setActiveReferral(null)}
-              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-300 transition-all"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div>
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">
                 Review Referral Claim
               </h3>
-              <p className="text-zinc-400 mt-0.5">
+              <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">
                 Reconcile ticket claim against official Meeteor Hub transactions before crediting points.
               </p>
             </div>
 
-            <div className="border border-zinc-800/80 rounded p-3.5 bg-[#09090b] space-y-2.5">
+            <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3.5 bg-zinc-50 dark:bg-[#09090b] space-y-2.5">
               <div className="flex justify-between">
                 <span className="text-zinc-500">Claimant Volunteer:</span>
-                <span className="text-zinc-200 font-medium">
+                <span className="text-zinc-900 dark:text-zinc-200 font-medium">
                   {activeReferral.volunteerName} ({activeReferral.volunteerTeam})
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-500">Buyer Name:</span>
-                <span className="text-zinc-200 font-medium">{activeReferral.buyerName}</span>
+                <span className="text-zinc-900 dark:text-zinc-200 font-medium">{activeReferral.buyerName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-500">Ticket Type & Qty:</span>
-                <span className="text-zinc-200 font-mono font-medium">
+                <span className="text-zinc-900 dark:text-zinc-200 font-mono font-medium">
                   {activeReferral.ticketQuantity}x {activeReferral.ticketType}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-500">Order Reference:</span>
-                <span className="font-mono text-zinc-200">
+                <span className="font-mono text-zinc-900 dark:text-zinc-200">
                   {activeReferral.orderReference || activeReferral.buyerIdentifier || "None"}
                 </span>
               </div>
               {activeReferral.buyerEmail && (
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Buyer Email:</span>
-                  <span className="font-mono text-zinc-300">{activeReferral.buyerEmail}</span>
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{activeReferral.buyerEmail}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-zinc-500">Submitted At:</span>
-                <span className="font-mono text-zinc-400">{formatDateTime(activeReferral.createdAt)}</span>
+                <span className="font-mono text-zinc-600 dark:text-zinc-400">{formatDateTime(activeReferral.createdAt)}</span>
               </div>
 
               {/* DUPLICATE FLAG ALERT BOX */}
               {activeReferral.flaggedDuplicate && (
-                <div className="mt-2 p-2.5 rounded border border-amber-800/60 bg-amber-950/30 text-amber-300 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5 text-[11px]">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                <div className="mt-2 p-2.5 rounded border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-[11px] text-amber-900 dark:text-amber-400">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     DUPLICATE FLAG DETECTED
                   </div>
                   <div className="text-[11px] leading-relaxed">
                     {activeReferral.duplicateReason || "This claim matched existing records in the database."}
                   </div>
                   {activeReferral.duplicateSourceId && (
-                    <div className="text-[10px] text-amber-400/80 font-mono">
+                    <div className="text-[10px] text-amber-700 dark:text-amber-400/80 font-mono">
                       Matched Source Claim ID: {activeReferral.duplicateSourceId}
                     </div>
                   )}
-                  <div className="text-[10px] text-amber-400/90 pt-1 font-semibold">
+                  <div className="text-[10px] text-amber-800 dark:text-amber-400/90 pt-1 font-semibold">
                     Policy Rule: Duplicate-flagged claims CANNOT be approved without an organizer verification note confirming a legitimate distinct purchase.
                   </div>
                 </div>
@@ -1315,10 +1307,10 @@ export default function AdminDashboardPage() {
             </div>
 
             <div>
-              <label className="block font-medium text-zinc-300 mb-1">
+              <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Verification Notes (Logged to Permanent Audit Trail)
                 {activeReferral.flaggedDuplicate && (
-                  <span className="text-amber-400 ml-1">* Required for flagged claims</span>
+                  <span className="text-amber-600 dark:text-amber-400 ml-1 font-semibold">* Required for flagged claims</span>
                 )}
               </label>
               <textarea
@@ -1330,7 +1322,7 @@ export default function AdminDashboardPage() {
                 }
                 value={decisionNotes}
                 onChange={(e) => setDecisionNotes(e.target.value)}
-                className="w-full bg-[#09090b] border border-zinc-800 rounded p-2.5 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors text-xs"
+                className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded p-2.5 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors text-xs"
               />
             </div>
 
@@ -1339,7 +1331,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 onClick={() => setActiveReferral(null)}
                 disabled={isUpdatingStatus}
-                className="px-3 py-1.5 rounded text-zinc-400 hover:text-white transition-all text-xs"
+                className="px-3 py-1.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all text-xs"
               >
                 Close
               </button>
@@ -1347,19 +1339,31 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={isUpdatingStatus}
                 onClick={() => handleUpdateStatus(activeReferral.id, "rejected", decisionNotes)}
-                className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-red-400 font-medium transition-all text-xs disabled:opacity-50"
+                className="px-3 py-1.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 font-medium transition-all text-xs disabled:opacity-50 border border-zinc-300 dark:border-transparent flex items-center gap-1.5"
               >
-                {isUpdatingStatus ? "Updating..." : "Reject Claim"}
+                {isUpdatingStatus ? (
+                  <>
+                    <LoadingSpinner size="xs" colorScheme="red-dark" label="Rejecting claim" />
+                    <span>Rejecting...</span>
+                  </>
+                ) : (
+                  <span>Reject Claim</span>
+                )}
               </button>
               <button
                 type="button"
                 disabled={isUpdatingStatus}
                 onClick={() => handleUpdateStatus(activeReferral.id, "approved", decisionNotes)}
-                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs text-xs disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs text-xs disabled:opacity-50 flex items-center gap-1.5"
               >
-                {isUpdatingStatus
-                  ? "Processing..."
-                  : `Approve & Award ${activeReferral.ticketQuantity * (scoringConfig.pointsPerTicket || 5)} Pts`}
+                {isUpdatingStatus ? (
+                  <>
+                    <LoadingSpinner size="xs" label="Processing approval" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <span>{`Approve & Award ${activeReferral.ticketQuantity * (scoringConfig.pointsPerTicket || 5)} Pts`}</span>
+                )}
               </button>
             </div>
           </div>
@@ -1368,23 +1372,23 @@ export default function AdminDashboardPage() {
 
       {/* 9. Policy Confirmation Modal */}
       {isConfirmingPolicyChange && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-backdrop">
-          <div className="bg-[#111114] border border-zinc-800 rounded max-w-md w-full p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
-            <h3 className="text-base font-bold text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded max-w-md w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white">
               Confirm Database Policy Update
             </h3>
-            <p className="text-zinc-300 leading-relaxed">
+            <p className="text-zinc-700 dark:text-zinc-300 leading-relaxed">
               You are updating the active scoring policy in Supabase to:{" "}
-              <strong className="text-white">
+              <strong className="text-zinc-900 dark:text-white">
                 {draftConfig.pointsPerTicket} points per verified ticket
               </strong>{" "}
               under policy status{" "}
-              <strong className="text-white capitalize">
+              <strong className="text-zinc-900 dark:text-white capitalize">
                 {draftConfig.status}
               </strong>.
             </p>
 
-            <div className="border border-amber-800/40 bg-amber-950/20 text-amber-300 p-3 rounded text-[11px] leading-relaxed">
+            <div className="border border-amber-300 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-3 rounded text-[11px] leading-relaxed">
               <strong>Notice:</strong> This change will update public standings across all volunteer dashboards and the live leaderboard.
             </div>
 
@@ -1393,7 +1397,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={isSavingPolicy}
                 onClick={() => setIsConfirmingPolicyChange(false)}
-                className="px-3 py-1.5 rounded text-zinc-400 hover:text-white transition-all"
+                className="px-3 py-1.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
               >
                 Cancel
               </button>
@@ -1401,9 +1405,16 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={isSavingPolicy}
                 onClick={handleSaveScoringPolicy}
-                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5"
               >
-                {isSavingPolicy ? "Saving to Supabase..." : "Confirm & Save to Supabase"}
+                {isSavingPolicy ? (
+                  <>
+                    <LoadingSpinner size="xs" label="Saving to Supabase" />
+                    <span>Saving to Supabase...</span>
+                  </>
+                ) : (
+                  <span>Confirm & Save to Supabase</span>
+                )}
               </button>
             </div>
           </div>

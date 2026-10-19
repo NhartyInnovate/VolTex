@@ -7,6 +7,11 @@
   --foreground: #f4f4f5;
 }
 
+html.light {
+  --background: #f8fafc;
+  --foreground: #09090b;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -26,9 +31,19 @@ body {
   border: 1px solid #222227;
 }
 
+html.light .tedx-surface {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
 .tedx-surface-hover:hover {
   background-color: #17171c;
   border-color: #2f2f37;
+}
+
+html.light .tedx-surface-hover:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 /* Subtle route page transition (280ms upward slide + fade) */

@@ -59,6 +59,7 @@ function calculateVolunteerSummary(referrals, config = {}) {
 
 // Team fallback logic matching src/config/constants.ts
 const CONFIRMED_TEAMS = [
+  "Ticket and Registration Team",
   "Protocol/Ushering/Logistics Team",
   "TEDxGwarinpa Prayer Team",
   "Volunteer Management Team",
@@ -345,7 +346,8 @@ console.log("\n[Test 6] Configurable Scoring Policies");
 // 7. Test Confirmed Team List & Fallbacks
 console.log("\n[Test 7] Volunteer Team Structure & Safe Fallbacks");
 {
-  assert.equal(CONFIRMED_TEAMS.length, 11, "Must contain exactly 11 confirmed community teams");
+  assert.equal(CONFIRMED_TEAMS.length, 12, "Must contain exactly 12 confirmed community teams");
+  assert.ok(CONFIRMED_TEAMS.includes("Ticket and Registration Team"));
   assert.ok(CONFIRMED_TEAMS.includes("TEDxGwarinpa Novelty Match ⚽"));
   assert.ok(CONFIRMED_TEAMS.includes("Website Team"));
   assert.ok(CONFIRMED_TEAMS.includes("Protocol/Ushering/Logistics Team"));

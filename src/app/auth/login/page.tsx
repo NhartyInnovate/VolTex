@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { LoadingSpinner, FullPageLoader, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
 
 function LoginForm() {
   const router = useRouter();
@@ -96,22 +97,22 @@ function LoginForm() {
       <div className="max-w-sm w-full space-y-6 animate-subtle-fade-up">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Sign in
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
             Access your volunteer referral dashboard or administrator verification queue.
           </p>
         </div>
 
         {/* Form Container */}
-        <div className="border border-zinc-800/80 rounded p-6 bg-[#111114] space-y-4">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-6 bg-white dark:bg-[#111114] shadow-xs space-y-4">
           {successNotice && (
             <div
               role="status"
-              className="border border-emerald-800/60 bg-emerald-950/40 text-emerald-300 px-3 py-2 rounded text-[11px] flex items-start gap-2 animate-subtle-fade-up"
+              className="border border-emerald-300 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-3 py-2 rounded text-[11px] flex items-start gap-2 animate-subtle-fade-up"
             >
-              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
               <span>{successNotice}</span>
             </div>
           )}
@@ -120,7 +121,7 @@ function LoginForm() {
             {errorMessage && (
               <div
                 role="alert"
-                className="border border-red-800/60 bg-red-950/40 text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
+                className="border border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
               >
                 {errorMessage}
               </div>
@@ -128,7 +129,7 @@ function LoginForm() {
 
             {/* Email */}
             <div>
-              <label className="block font-medium text-zinc-300 mb-1">
+              <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Email Address
               </label>
               <input
@@ -137,19 +138,19 @@ function LoginForm() {
                 placeholder="volunteer@tedxgwarinpa.org"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
               />
             </div>
 
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-medium text-zinc-300">
+                <label className="font-medium text-zinc-700 dark:text-zinc-300">
                   Password
                 </label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="text-[11px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                 >
                   Forgot password?
                 </Link>
@@ -161,12 +162,12 @@ function LoginForm() {
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#09090b] border border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                  className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 pr-9 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -178,18 +179,25 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all disabled:opacity-50 shadow-xs"
+                className="w-full py-2.5 rounded bg-tedx-red hover:bg-tedx-darkred active:scale-[0.98] text-white font-semibold transition-all disabled:opacity-50 shadow-xs flex items-center justify-center"
               >
-                {isSubmitting ? "Signing in..." : "Sign In"}
+                <span>{isSubmitting ? "Signing in..." : "Sign In"}</span>
               </button>
             </div>
           </form>
 
-          <div className="border-t border-zinc-800/80 pt-3 text-center text-[11px] text-zinc-500">
+          {isSubmitting && (
+            <CenteredProcessingOverlay
+              message="Signing in..."
+              label="Signing in to your account"
+            />
+          )}
+
+          <div className="border-t border-zinc-200 dark:border-zinc-800/80 pt-3 text-center text-[11px] text-zinc-500">
             Don&apos;t have an account?{" "}
             <Link
               href="/auth/register"
-              className="text-zinc-300 hover:text-white underline underline-offset-4"
+              className="text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:white underline underline-offset-4"
             >
               Register here
             </Link>
@@ -203,9 +211,10 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-[calc(100vh-14rem)] flex items-center justify-center py-12 px-4 sm:px-6">
-        <div className="text-zinc-500 text-xs font-mono">Loading...</div>
-      </div>
+      <FullPageLoader
+        message="Loading Sign In..."
+        label="Loading sign in form"
+      />
     }>
       <LoginForm />
     </Suspense>

@@ -20,6 +20,7 @@ export const CONFERENCE_CONFIG = {
  * Reflects actual confirmed TEDxGwarinpa community teams plus Website Team.
  */
 export const VOLUNTEER_TEAMS = [
+  "Ticket and Registration Team",
   "Protocol/Ushering/Logistics Team",
   "TEDxGwarinpa Prayer Team",
   "Volunteer Management Team",
@@ -70,7 +71,8 @@ export const TICKET_TYPES = [
 export type TicketType = (typeof TICKET_TYPES)[number];
 
 /**
- * Pre-written promotional messages for volunteers to share with their network
+ * Pre-written promotional messages for volunteers to share with their network.
+ * Uses explicit \n\n paragraph breaks so visual spacing is retained when pasted into WhatsApp.
  */
 export const PROMOTIONAL_TEMPLATES = [
   {
@@ -78,27 +80,27 @@ export const PROMOTIONAL_TEMPLATES = [
     channel: "WhatsApp Direct Message",
     title: "Personal Invitation to Friends & Colleagues",
     content: (name: string, url: string) =>
-      `Hey there! I am volunteering with the TEDxGwarinpa team. We are hosting an incredible gathering of thinkers, innovators, and changemakers. Tickets are moving fast, and I'd love to see you there! Get yours directly via my link: ${url}. Once you reserve, let me know so I can ensure you're well taken care of! — ${name}`,
+      `Hey there! 👋\n\nI am volunteering with the TEDxGwarinpa team. We are hosting an incredible gathering of thinkers, innovators, and changemakers.\n\nTickets are moving fast, and I'd love to see you there!\n\nGet yours directly via my link:\n\n${url}\n\nOnce you've reserved your ticket, please let me know so I can ensure you're well taken care of!\n\n${name}`,
   },
   {
     id: "whatsapp-group",
     channel: "WhatsApp Groups / Broadcasts",
     title: "Community & Network Broadcast",
     content: (_name: string, url: string) =>
-      `Join us at TEDxGwarinpa! Step into a room filled with transformative ideas, world-class speakers, and high-impact networking. Secure your official delegate ticket now on Meeteor: ${url} 🚀 Seats are limited!`,
+      `Join us at TEDxGwarinpa! 🚀\n\nStep into a room filled with transformative ideas, world-class speakers, and high-impact networking.\n\nSecure your official delegate ticket now on Meeteor:\n\n${url}\n\nSeats are limited, so reserve yours today!`,
   },
   {
     id: "social-caption",
     channel: "Instagram / LinkedIn Caption",
     title: "Social Media Post & Bio Link",
-    content: (_name: string, url: string) =>
-      `Excited to be part of the volunteer team bringing TEDxGwarinpa to life! 🎤 Are you ready for an unforgettable day of inspiring talks and fresh perspectives? Grab your ticket now before prices increase: ${url} #TEDxGwarinpa #IdeasWorthSpreading #AbujaEvents`,
+    content: (name: string, url: string) =>
+      `Excited to be part of the volunteer team bringing TEDxGwarinpa to life! 🎤\n\nAre you ready for an unforgettable day of inspiring talks, fresh perspectives, and powerful connections?\n\nGrab your ticket now before prices increase:\n\n${url}\n\nOnce reserved, drop a message so we can connect!\n\n— ${name}\n\n#TEDxGwarinpa #IdeasWorthSpreading #AbujaEvents`,
   },
   {
     id: "quick-pitch",
     channel: "Quick SMS / Chat Pitch",
     title: "Short & Punchy Pitch",
-    content: (_name: string, url: string) =>
-      `Hey! Grab your TEDxGwarinpa ticket here before it sells out: ${url}. See you on conference day!`,
+    content: (name: string, url: string) =>
+      `Hey! 👋\n\nGrab your TEDxGwarinpa ticket here before it sells out:\n\n${url}\n\nLet me know once reserved so I can look out for you. See you on conference day!\n\n${name}`,
   },
 ];

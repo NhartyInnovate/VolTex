@@ -12,8 +12,15 @@ export function createClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be defined."
+    // When environment variables are missing (e.g. initial setup or incomplete Vercel environment config),
+    // warn in the developer console instead of throwing an unhandled client exception that crashes the entire page.
+    console.warn(
+      "[VolTex Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. Ensure environment variables are configured in project settings."
+    );
+    // Provide a non-crashing mock/dummy client or empty placeholder client
+    return createBrowserClient(
+      supabaseUrl || "https://placeholder-project.supabase.co",
+      supabaseAnonKey || "placeholder-anon-key"
     );
   }
 

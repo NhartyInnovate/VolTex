@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId } from "react";
+import React from "react";
 import { usePathname } from "next/navigation";
 
 interface PageTransitionProps {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -83,6 +84,12 @@ export default function AdminDashboardPage() {
   const [isSavingPolicy, setIsSavingPolicy] = useState(false);
   const [isConfirmingPolicyChange, setIsConfirmingPolicyChange] = useState(false);
   const [scoringConfigError, setScoringConfigError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Fetch all live admin data from Supabase
   const loadAdminData = useCallback(async () => {
@@ -553,7 +560,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 min-w-0">
       {/* 1. Header with Live Status & Refresh */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-6 animate-subtle-fade-up">
         <div className="min-w-0">
@@ -591,9 +598,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 2. Top-Level Genuine Platform Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-xs w-full min-w-0">
         {/* Total Volunteers */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-75 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-75 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors min-w-0">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Volunteers <Users className="w-3 h-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
           </span>
@@ -603,7 +610,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Total Referrals */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-100 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-100 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors min-w-0">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Claims <Ticket className="w-3 h-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
           </span>
@@ -613,7 +620,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Pending Review */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-150 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-150 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors min-w-0">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Pending <Clock className="w-3 h-3 text-amber-500 shrink-0" />
           </span>
@@ -623,7 +630,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Duplicate Flags */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-200 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-200 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors min-w-0">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Duplicates <ShieldAlert className="w-3 h-3 text-amber-500 shrink-0" />
           </span>
@@ -633,7 +640,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Verified Tickets */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-250 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-250 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors min-w-0">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Approved Tix <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
           </span>
@@ -643,7 +650,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Points Awarded */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-300 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-300 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors min-w-0">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
             Points Awarded <Trophy className="w-3 h-3 text-tedx-red shrink-0" />
           </span>
@@ -654,8 +661,8 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 3. Navigation Tabs */}
-      <div className="w-full overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex overflow-x-auto no-scrollbar py-0.5 gap-1 text-xs">
+      <div className="w-full max-w-full overflow-hidden border-b border-zinc-200 dark:border-zinc-800 min-w-0">
+        <div className="flex overflow-x-auto no-scrollbar py-0.5 gap-1 text-xs w-full min-w-0">
           <button
             onClick={() => setActiveTab("referrals")}
             className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
@@ -1441,7 +1448,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* 8. Reconcile / Review Modal */}
-      {activeReferral && (
+      {activeReferral && mounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
           <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-lg w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <button
@@ -1579,10 +1586,10 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* 9. Policy Confirmation Modal */}
-      {isConfirmingPolicyChange && (
+      {isConfirmingPolicyChange && mounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
           <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <h3 className="text-base font-bold text-zinc-900 dark:text-white">
@@ -1630,7 +1637,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

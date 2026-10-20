@@ -4,8 +4,7 @@ import { FullPageLoader } from "@/components/LoadingSpinner";
 export default function Loading() {
   return (
     <FullPageLoader
-      message="Loading VolTex..."
-      subMessage="Connecting to challenge services..."
+      message="Loading..."
       label="Loading page content"
     />
   );

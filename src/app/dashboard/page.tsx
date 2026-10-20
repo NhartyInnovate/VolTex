@@ -405,8 +405,7 @@ export default function VolunteerDashboardPage() {
   if (loading) {
     return (
       <FullPageLoader
-        message="Loading your dashboard..."
-        subMessage="Connecting to Supabase and retrieving live stats..."
+        message="Loading..."
         label="Loading volunteer dashboard"
       />
     );

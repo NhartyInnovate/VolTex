@@ -518,7 +518,6 @@ export default function AdminDashboardPage() {
     return (
       <FullPageLoader
         message="Loading admin command center..."
-        subMessage="Retrieving challenge metrics and live database audit trail..."
         label="Loading admin command center"
       />
     );

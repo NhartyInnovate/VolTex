@@ -145,7 +145,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800/80 transition-colors animate-nav-in">
+    <header className="sticky top-0 z-50 bg-[#09090b]/95 backdrop-blur-sm border-b border-zinc-800/80 transition-colors animate-nav-in">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           {/* Brand Logo: Official VolTex Image */}
@@ -165,21 +165,21 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-zinc-300">
             {/* Safe rendering: never expose links while auth is unresolved */}
             {authResolved && !currentUser && (
               <>
                 <Link
                   href="/#overview"
                   onClick={(e) => handleAnchorClick(e, "overview")}
-                  className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150 focus:outline-none focus:text-zinc-900 dark:focus:text-white focus:underline"
+                  className="hover:text-white transition-colors duration-150 focus:outline-none focus:text-white focus:underline"
                 >
                   How It Works
                 </Link>
                 <Link
                   href="/#leaderboard"
                   onClick={(e) => handleAnchorClick(e, "leaderboard")}
-                  className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150 focus:outline-none focus:text-zinc-900 dark:focus:text-white focus:underline"
+                  className="hover:text-white transition-colors duration-150 focus:outline-none focus:text-white focus:underline"
                 >
                   Sample Leaderboard
                 </Link>
@@ -191,14 +191,14 @@ export function Navbar() {
                 {currentUser.role === "admin" ? (
                   <Link
                     href="/admin"
-                    className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150 text-zinc-900 dark:text-white font-semibold focus:outline-none focus:underline"
+                    className="hover:text-white transition-colors duration-150 text-white font-semibold focus:outline-none focus:underline"
                   >
                     Admin Dashboard
                   </Link>
                 ) : (
                   <Link
                     href="/dashboard"
-                    className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150 text-zinc-900 dark:text-white font-semibold focus:outline-none focus:underline"
+                    className="hover:text-white transition-colors duration-150 text-white font-semibold focus:outline-none focus:underline"
                   >
                     Dashboard
                   </Link>
@@ -217,7 +217,7 @@ export function Navbar() {
               <>
                 <Link
                   href="/auth/login"
-                  className="text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1.5 transition-colors focus:outline-none focus:text-zinc-900 dark:focus:text-white"
+                  className="text-xs font-medium text-zinc-300 hover:text-white px-2.5 py-1.5 transition-colors focus:outline-none focus:text-white"
                 >
                   Sign In
                 </Link>
@@ -232,32 +232,32 @@ export function Navbar() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 text-xs font-medium text-zinc-800 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 hover:border-zinc-300 dark:hover:border-zinc-600 px-3 py-1.5 rounded transition-all active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-tedx-red"
+                  className="flex items-center gap-2 text-xs font-medium text-zinc-200 hover:text-white bg-zinc-900 border border-zinc-700/80 hover:border-zinc-600 px-3 py-1.5 rounded transition-all active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-tedx-red"
                   aria-expanded={userDropdownOpen}
                   aria-haspopup="true"
                 >
-                  <User className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                  <User className="w-3.5 h-3.5 text-zinc-400" />
                   <span className="max-w-[120px] truncate">
                     {currentUser.fullName || currentUser.email}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs text-zinc-800 dark:text-zinc-200 animate-subtle-fade-up">
-                    <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-800/80">
-                      <div className="font-semibold text-zinc-900 dark:text-white truncate">
+                  <div className="absolute right-0 mt-2 w-52 bg-[#111114] border border-zinc-800 rounded-lg shadow-xl py-1 text-xs text-zinc-200 animate-subtle-fade-up">
+                    <div className="px-3 py-2 border-b border-zinc-800/80">
+                      <div className="font-semibold text-white truncate">
                         {currentUser.fullName || "Volunteer"}
                       </div>
-                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate font-mono">
+                      <div className="text-[10px] text-zinc-400 truncate font-mono">
                         {currentUser.email}
                       </div>
                       {currentUser.volunteerTeam && (
-                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                        <div className="text-[10px] text-zinc-400 truncate mt-0.5">
                           {currentUser.volunteerTeam}
                         </div>
                       )}
-                      <span className="inline-block mt-1 text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                      <span className="inline-block mt-1 text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
                         {currentUser.role}
                       </span>
                     </div>
@@ -268,9 +268,9 @@ export function Navbar() {
                         setUserDropdownOpen(false);
                         setProfileModalOpen(true);
                       }}
-                      className="w-full text-left flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                      className="w-full text-left flex items-center gap-2 px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors"
                     >
-                      <User className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                      <User className="w-3.5 h-3.5 text-zinc-400" />
                       <span>Profile Details</span>
                     </button>
 
@@ -278,7 +278,7 @@ export function Navbar() {
                     {currentUser.role === "admin" && pathname !== "/admin" && (
                       <Link
                         href="/admin"
-                        className="block px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors border-t border-zinc-200 dark:border-zinc-800/50"
+                        className="block px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
                       >
                         Admin Portal
                       </Link>
@@ -286,7 +286,7 @@ export function Navbar() {
                     {currentUser.role !== "admin" && pathname !== "/dashboard" && (
                       <Link
                         href="/dashboard"
-                        className="block px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors border-t border-zinc-200 dark:border-zinc-800/50"
+                        className="block px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
                       >
                         Volunteer Dashboard
                       </Link>
@@ -295,7 +295,7 @@ export function Navbar() {
                     <button
                       onClick={handleSignOut}
                       disabled={isSigningOut}
-                      className="w-full text-left flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300 transition-colors border-t border-zinc-200 dark:border-zinc-800/80 disabled:opacity-50"
+                      className="w-full text-left flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors border-t border-zinc-800/80 disabled:opacity-50"
                     >
                       {isSigningOut ? (
                         <>
@@ -320,7 +320,7 @@ export function Navbar() {
             <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white active:scale-95 transition-all focus:outline-none focus:ring-1 focus:ring-tedx-red rounded"
+              className="p-1.5 text-zinc-300 hover:text-white active:scale-95 transition-all focus:outline-none focus:ring-1 focus:ring-tedx-red rounded"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? (
@@ -335,26 +335,26 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0f] px-4 py-4 space-y-3 animate-subtle-fade-up shadow-xl">
+        <div className="md:hidden border-t border-zinc-800 bg-[#0c0c0f] px-4 py-4 space-y-3 animate-subtle-fade-up shadow-xl">
           {!authResolved ? (
-            <div className="h-6 w-32 bg-zinc-200 dark:bg-zinc-800/60 animate-pulse rounded" />
+            <div className="h-6 w-32 bg-zinc-800/60 animate-pulse rounded" />
           ) : !currentUser ? (
             <>
               <Link
                 href="/#overview"
                 onClick={(e) => handleAnchorClick(e, "overview")}
-                className="block text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white py-1.5 transition-colors text-xs font-medium"
+                className="block text-zinc-300 hover:text-white py-1.5 transition-colors text-xs font-medium"
               >
                 How It Works
               </Link>
               <Link
                 href="/#leaderboard"
                 onClick={(e) => handleAnchorClick(e, "leaderboard")}
-                className="block text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white py-1.5 transition-colors text-xs font-medium"
+                className="block text-zinc-300 hover:text-white py-1.5 transition-colors text-xs font-medium"
               >
                 Sample Leaderboard
               </Link>
-              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80 flex flex-col gap-2">
+              <div className="pt-3 border-t border-zinc-800/80 flex flex-col gap-2">
                 <Link
                   href="/auth/register"
                   className="text-center py-2.5 rounded bg-tedx-red text-white text-xs font-semibold active:scale-[0.98] transition-all shadow-xs"
@@ -363,7 +363,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="text-center py-2.5 rounded border border-zinc-300 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white text-xs active:scale-[0.98] transition-all font-medium bg-zinc-50 dark:bg-zinc-900/60"
+                  className="text-center py-2.5 rounded border border-zinc-800 text-zinc-300 hover:text-white text-xs active:scale-[0.98] transition-all font-medium bg-zinc-900/60"
                 >
                   Sign In
                 </Link>
@@ -371,19 +371,19 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <div className="pb-2 border-b border-zinc-200 dark:border-zinc-800/80">
-                <div className="font-semibold text-zinc-900 dark:text-white text-xs truncate">
+              <div className="pb-2 border-b border-zinc-800/80">
+                <div className="font-semibold text-white text-xs truncate">
                   {currentUser.fullName || "Volunteer"}
                 </div>
-                <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate font-mono">
+                <div className="text-[10px] text-zinc-400 truncate font-mono">
                   {currentUser.email}
                 </div>
                 {currentUser.volunteerTeam && (
-                  <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">
                     {currentUser.volunteerTeam}
                   </div>
                 )}
-                <span className="inline-block mt-1 text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                <span className="inline-block mt-1 text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
                   {currentUser.role}
                 </span>
               </div>
@@ -392,7 +392,7 @@ export function Navbar() {
                 <Link
                   href="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white py-1.5 transition-colors text-xs font-medium"
+                  className="block text-zinc-200 hover:text-white py-1.5 transition-colors text-xs font-medium"
                 >
                   Admin Dashboard
                 </Link>
@@ -400,7 +400,7 @@ export function Navbar() {
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white py-1.5 transition-colors text-xs font-medium"
+                  className="block text-zinc-200 hover:text-white py-1.5 transition-colors text-xs font-medium"
                 >
                   Dashboard
                 </Link>
@@ -412,17 +412,17 @@ export function Navbar() {
                   setMobileMenuOpen(false);
                   setProfileModalOpen(true);
                 }}
-                className="w-full text-left flex items-center gap-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors font-medium"
+                className="w-full text-left flex items-center gap-2 py-1.5 text-xs text-zinc-300 hover:text-white transition-colors font-medium"
               >
-                <User className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                <User className="w-3.5 h-3.5 text-zinc-400" />
                 <span>Profile Details</span>
               </button>
 
-              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80">
+              <div className="pt-3 border-t border-zinc-800/80">
                 <button
                   onClick={handleSignOut}
                   disabled={isSigningOut}
-                  className="w-full text-left flex items-center gap-2 py-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors font-medium disabled:opacity-50"
+                  className="w-full text-left flex items-center gap-2 py-2 text-xs text-red-400 hover:text-red-300 transition-colors font-medium disabled:opacity-50"
                 >
                   {isSigningOut ? (
                     <>

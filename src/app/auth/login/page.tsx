@@ -212,7 +212,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <FullPageLoader
-        message="Loading Sign In..."
+        message="Loading..."
         label="Loading sign in form"
       />
     }>

@@ -175,22 +175,17 @@ export function CenteredProcessingOverlay({
       role="status"
       aria-label={label}
       aria-live="polite"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/15 dark:bg-black/60 backdrop-blur-[2px] transition-colors duration-200 animate-subtle-fade-up select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/40 backdrop-blur-[1px] transition-colors duration-200 animate-subtle-fade-up select-none"
     >
-      <div className="bg-white dark:bg-[#111114] border border-zinc-200/90 dark:border-zinc-800 rounded-xl px-7 py-6 sm:px-8 sm:py-7 shadow-xl dark:shadow-2xl flex flex-col items-center justify-center gap-4 text-center max-w-[280px] sm:max-w-xs mx-4">
+      <div className="bg-white dark:bg-[#111114] border border-zinc-200/90 dark:border-zinc-800 rounded-xl px-7 py-6 sm:px-8 sm:py-7 shadow-xl dark:shadow-2xl flex flex-col items-center justify-center gap-3.5 text-center max-w-[280px] sm:max-w-xs mx-4">
         <LoadingSpinner
           size="xl"
           colorScheme="red-dark"
           label={label}
         />
-        <div className="space-y-1">
-          <p className="text-xs sm:text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {message}
-          </p>
-          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
-            Please wait a moment...
-          </p>
-        </div>
+        <p className="text-xs sm:text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          {message}
+        </p>
       </div>
     </div>
   );

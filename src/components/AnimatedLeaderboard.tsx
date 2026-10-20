@@ -191,8 +191,8 @@ export function AnimatedLeaderboard({
   return (
     <div className="space-y-4">
       {/* Search, Filter & Optional Demo Simulation Control */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 text-xs">
+        <div className="relative flex-1 w-full sm:max-w-sm">
           <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -203,11 +203,11 @@ export function AnimatedLeaderboard({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap xs:flex-nowrap items-center gap-2 w-full sm:w-auto">
           <select
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
-            className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors text-xs flex-1 sm:flex-initial shadow-xs"
+            className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors text-xs flex-1 min-w-0 sm:flex-initial shadow-xs"
           >
             <option value="all">All Teams</option>
             {VOLUNTEER_TEAMS.map((team) => (
@@ -222,7 +222,7 @@ export function AnimatedLeaderboard({
               type="button"
               onClick={simulatePositionChange}
               disabled={isSimulating}
-              className="px-3 py-2 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 active:scale-95 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-xs focus:outline-none focus:ring-1 focus:ring-tedx-red"
+              className="px-3 py-2 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 active:scale-95 transition-all text-xs font-semibold flex items-center justify-center gap-1.5 shrink-0 shadow-xs focus:outline-none focus:ring-1 focus:ring-tedx-red"
               title="Simulate dynamic ranking update with live animation"
             >
               <Shuffle className={`w-3.5 h-3.5 ${isSimulating ? "animate-spin text-tedx-red" : ""}`} />

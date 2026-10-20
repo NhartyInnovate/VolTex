@@ -180,10 +180,12 @@ export function OnboardingTour({
       return {
         position: "fixed",
         bottom: "max(16px, env(safe-area-inset-bottom, 16px))",
-        left: "12px",
-        right: "12px",
+        left: "16px",
+        right: "16px",
+        width: "calc(100vw - 32px)",
+        maxWidth: "400px",
         margin: "0 auto",
-        maxWidth: "420px",
+        boxSizing: "border-box",
         zIndex: 9999,
       };
     }
@@ -217,6 +219,7 @@ export function OnboardingTour({
       top: `${Math.round(top)}px`,
       left: `${Math.round(left)}px`,
       width: `${tooltipWidth}px`,
+      boxSizing: "border-box",
       zIndex: 9999,
     };
   };
@@ -224,7 +227,7 @@ export function OnboardingTour({
   // Render modal content
   const modalContent = (
     <div
-      className="fixed inset-0 z-[9998] overflow-hidden select-none pointer-events-auto"
+      className="fixed inset-0 z-[9998] w-screen h-screen overflow-hidden select-none pointer-events-auto"
       role="dialog"
       aria-modal="true"
       aria-label="Guided Onboarding Tour"
@@ -232,7 +235,6 @@ export function OnboardingTour({
       {/* 1. Backdrop Overlay with SVG Cutout Spotlight */}
       <svg
         className="fixed inset-0 w-full h-full pointer-events-none transition-opacity duration-300"
-        style={{ width: "100vw", height: "100vh" }}
       >
         <defs>
           <mask id="tour-spotlight-mask">
@@ -302,25 +304,25 @@ export function OnboardingTour({
         </div>
 
         {/* Title */}
-        <h3 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">
+        <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white tracking-tight break-words">
           {currentStep.title}
         </h3>
 
         {/* Message */}
-        <p className="mt-1.5 text-xs sm:text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1.5 text-xs sm:text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-400 break-words">
           {currentStep.message}
         </p>
 
-        {/* Action Controls */}
-        <div className="mt-5 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-2">
+        {/* Action Controls (Responsive Wrap/Stack) */}
+        <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2.5">
           <button
             onClick={onSkip}
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 px-2 py-1.5 rounded transition-colors"
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 px-1.5 py-1.5 rounded transition-colors order-1"
           >
             Skip Tour
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 order-2 ml-auto">
             {!isFirstStep && (
               <button
                 onClick={handleBack}

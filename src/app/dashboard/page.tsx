@@ -577,43 +577,43 @@ export default function VolunteerDashboardPage() {
       </div>
 
       {/* 4. Section Navigation Tabs: Promotional Templates | My Referral Claims | Live Challenge Standings */}
-      <div className="flex justify-center w-full">
-        <div className="inline-flex items-center justify-center p-1.5 rounded-xl bg-zinc-100 dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800/80 shadow-xs max-w-full overflow-x-auto no-scrollbar gap-1 sm:gap-1.5">
+      <div className="w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-3 sm:inline-flex sm:w-auto w-full mx-auto sm:justify-center p-1.5 rounded-xl bg-zinc-100 dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800/80 shadow-xs gap-1 sm:gap-1.5">
           <button
             id="tour-tab-templates"
             onClick={() => setActiveTab("templates")}
-            className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
+            className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 text-center ${
               activeTab === "templates"
                 ? "bg-tedx-red text-white text-xs sm:text-[13px] font-semibold shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
             }`}
           >
-            <Share2 className={`w-3.5 h-3.5 ${activeTab === "templates" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
-            <span>Promotional Templates</span>
+            <Share2 className={`w-3.5 h-3.5 shrink-0 ${activeTab === "templates" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
+            <span className="truncate sm:whitespace-normal">Promotional Templates</span>
           </button>
           <button
             id="tour-tab-referrals"
             onClick={() => setActiveTab("referrals")}
-            className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
+            className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 text-center ${
               activeTab === "referrals"
                 ? "bg-tedx-red text-white text-xs sm:text-[13px] font-semibold shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
             }`}
           >
-            <Ticket className={`w-3.5 h-3.5 ${activeTab === "referrals" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
-            <span>My Referral Claims ({referrals.length})</span>
+            <Ticket className={`w-3.5 h-3.5 shrink-0 ${activeTab === "referrals" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
+            <span className="truncate sm:whitespace-normal">My Referral Claims ({referrals.length})</span>
           </button>
           <button
             id="tour-tab-leaderboard"
             onClick={() => setActiveTab("leaderboard")}
-            className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
+            className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 text-center ${
               activeTab === "leaderboard"
                 ? "bg-tedx-red text-white text-xs sm:text-[13px] font-semibold shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
             }`}
           >
-            <Trophy className={`w-3.5 h-3.5 ${activeTab === "leaderboard" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
-            <span>Live Challenge Standings ({liveLeaderboard.length})</span>
+            <Trophy className={`w-3.5 h-3.5 shrink-0 ${activeTab === "leaderboard" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
+            <span className="truncate sm:whitespace-normal">Live Standings ({liveLeaderboard.length})</span>
           </button>
         </div>
       </div>
@@ -655,9 +655,10 @@ export default function VolunteerDashboardPage() {
             </div>
           </div>
 
-          {/* Table Container with Controlled Overflow */}
+          {/* Table Container for Desktop, Responsive Cards for Mobile */}
           <div className="border border-zinc-200 dark:border-zinc-800/80 rounded-lg bg-white dark:bg-[#111114] overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
+            {/* 1. Desktop Table View (Hidden on Mobile) */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
@@ -751,7 +752,90 @@ export default function VolunteerDashboardPage() {
               </table>
             </div>
 
-            <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500 flex justify-between items-center">
+            {/* 2. Mobile Responsive Card List (Visible on < sm) */}
+            <div className="block sm:hidden divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
+              {filteredReferrals.length === 0 ? (
+                <div className="py-10 px-4 text-center text-xs text-zinc-500">
+                  {referrals.length === 0
+                    ? "No referrals submitted yet. Click 'Submit Referral' above to report your first claim."
+                    : "No referrals match this filter."}
+                </div>
+              ) : (
+                filteredReferrals.map((r) => (
+                  <div key={r.id} className="p-4 space-y-2.5 text-xs">
+                    {/* Header: Buyer Name & Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm break-words">
+                        {r.buyerName}
+                      </div>
+                      <div>
+                        {r.status === "approved" && (
+                          <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-2 py-0.5 rounded text-[11px] font-medium">
+                            Approved
+                          </span>
+                        )}
+                        {r.status === "pending" && (
+                          <span className="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 px-2 py-0.5 rounded text-[11px] font-medium">
+                            Pending
+                          </span>
+                        )}
+                        {r.status === "rejected" && (
+                          <span className="text-rose-600 dark:text-red-400 bg-rose-50 dark:bg-red-950/40 border border-rose-200 dark:border-red-800/40 px-2 py-0.5 rounded text-[11px] font-medium">
+                            Rejected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ticket Details & Qty */}
+                    <div className="flex items-center justify-between text-zinc-600 dark:text-zinc-400 text-xs">
+                      <span>{r.ticketType}</span>
+                      <span className="font-mono font-medium text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded">
+                        Qty: {r.ticketQuantity}
+                      </span>
+                    </div>
+
+                    {/* Order Reference & Email */}
+                    <div className="bg-zinc-50 dark:bg-[#09090b] p-2.5 rounded border border-zinc-200 dark:border-zinc-800/70 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between text-zinc-500">
+                        <span>Order Reference:</span>
+                        <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200 break-all">
+                          {r.orderReference || (r.buyerIdentifier && !r.buyerIdentifier.includes("@") ? r.buyerIdentifier : "—")}
+                        </span>
+                      </div>
+                      {(r.buyerEmail || (r.buyerIdentifier && r.buyerIdentifier.includes("@"))) && (
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span>Buyer Email:</span>
+                          <span className="font-sans text-zinc-800 dark:text-zinc-300 break-all text-right">
+                            {r.buyerEmail || r.buyerIdentifier}
+                          </span>
+                        </div>
+                      )}
+                      {r.flaggedDuplicate && (
+                        <div className="text-[10px] text-amber-500 font-medium pt-0.5">
+                          ⚠ Duplicate flagged
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Organizer Notes */}
+                    {r.adminNotes && (
+                      <div className="text-[11px] text-zinc-500 bg-amber-500/5 border border-amber-500/20 p-2 rounded break-words">
+                        <span className="font-medium text-amber-600 dark:text-amber-400">Notes: </span>
+                        {r.adminNotes}
+                      </div>
+                    )}
+
+                    {/* Submission Date */}
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono text-right pt-1">
+                      {formatDateTime(r.createdAt)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500 flex flex-col xs:flex-row justify-between items-center gap-1">
               <span>{filteredReferrals.length} referrals shown</span>
               <span>Scoring rule: {scoringConfig.pointsPerTicket} pts per approved ticket</span>
             </div>

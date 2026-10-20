@@ -175,9 +175,9 @@ export function CenteredProcessingOverlay({
       role="status"
       aria-label={label}
       aria-live="polite"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/60 backdrop-blur-xs animate-subtle-fade-up select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/15 dark:bg-black/60 backdrop-blur-[2px] transition-colors duration-200 animate-subtle-fade-up select-none"
     >
-      <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-xl px-8 py-7 shadow-2xl flex flex-col items-center justify-center gap-4 text-center max-w-xs mx-4">
+      <div className="bg-white dark:bg-[#111114] border border-zinc-200/90 dark:border-zinc-800 rounded-xl px-7 py-6 sm:px-8 sm:py-7 shadow-xl dark:shadow-2xl flex flex-col items-center justify-center gap-4 text-center max-w-[280px] sm:max-w-xs mx-4">
         <LoadingSpinner
           size="xl"
           colorScheme="red-dark"

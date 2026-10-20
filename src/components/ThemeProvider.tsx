@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } else {
         // System preference check
         const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const initialTheme: Theme = systemPrefersDark ? "dark" : "dark"; // Default dark for VolTex
+        const initialTheme: Theme = systemPrefersDark ? "dark" : "light";
         setThemeState(initialTheme);
         applyThemeClass(initialTheme);
       }

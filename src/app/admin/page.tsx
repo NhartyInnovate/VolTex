@@ -782,9 +782,10 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Referral Table */}
+          {/* Referral Table Container (Desktop Table + Mobile Responsive Cards) */}
           <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* 1. Desktop Table View (Hidden on mobile < sm) */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
@@ -815,17 +816,17 @@ export default function AdminDashboardPage() {
                       >
                         {/* Volunteer */}
                         <td className="py-3 px-4">
-                          <div className="font-medium text-zinc-900 dark:text-zinc-200">
+                          <div className="font-medium text-zinc-900 dark:text-zinc-200 break-words">
                             {r.volunteerName}
                           </div>
-                          <div className="text-[11px] text-zinc-500">
+                          <div className="text-[11px] text-zinc-500 break-words">
                             {r.volunteerTeam}
                           </div>
                         </td>
 
                         {/* Buyer */}
                         <td className="py-3 px-4">
-                          <div className="font-medium text-zinc-900 dark:text-zinc-200">
+                          <div className="font-medium text-zinc-900 dark:text-zinc-200 break-words">
                             {r.buyerName}
                           </div>
                           <div className="text-[10px] text-zinc-500 font-mono">
@@ -838,25 +839,25 @@ export default function AdminDashboardPage() {
                           <span className="font-mono font-medium text-zinc-900 dark:text-zinc-200 mr-1.5">
                             {r.ticketQuantity}x
                           </span>
-                          <span className="text-zinc-600 dark:text-zinc-400">{r.ticketType}</span>
+                          <span className="text-zinc-600 dark:text-zinc-400 break-words">{r.ticketType}</span>
                         </td>
 
                         {/* Order Ref & Buyer Email */}
                         <td className="py-3 px-4 font-mono text-[11px]">
                           {r.orderReference ? (
-                            <div className="text-zinc-900 dark:text-zinc-200 font-semibold">
+                            <div className="text-zinc-900 dark:text-zinc-200 font-semibold break-all">
                               {r.orderReference}
                             </div>
                           ) : (
                             <div className="text-zinc-400 dark:text-zinc-500 italic">No order ref</div>
                           )}
                           {r.buyerEmail && (
-                            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans mt-0.5">
+                            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans mt-0.5 break-all">
                               {r.buyerEmail}
                             </div>
                           )}
                           {!r.orderReference && !r.buyerEmail && r.buyerIdentifier && (
-                            <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                            <div className="text-[11px] text-zinc-600 dark:text-zinc-400 break-all">
                               {r.buyerIdentifier}
                             </div>
                           )}
@@ -866,17 +867,17 @@ export default function AdminDashboardPage() {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-1.5">
                             {r.status === "approved" && (
-                              <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                              <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 font-medium">
                                 <CheckCircle2 className="w-3 h-3" /> Approved
                               </span>
                             )}
                             {r.status === "pending" && (
-                              <span className="text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                              <span className="text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 font-medium">
                                 <Clock className="w-3 h-3" /> Pending
                               </span>
                             )}
                             {r.status === "rejected" && (
-                              <span className="text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
+                              <span className="text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 font-medium">
                                 <XCircle className="w-3 h-3" /> Rejected
                               </span>
                             )}
@@ -884,9 +885,9 @@ export default function AdminDashboardPage() {
 
                           {/* Duplicate Warning Badge */}
                           {r.flaggedDuplicate && (
-                            <div className="mt-1 text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1 bg-amber-100 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/40 px-1.5 py-0.5 rounded">
+                            <div className="mt-1 text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1 bg-amber-100 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/40 px-1.5 py-0.5 rounded font-medium">
                               <ShieldAlert className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                              <span>{r.duplicateReason || "Duplicate Flag"}</span>
+                              <span className="break-words">{r.duplicateReason || "Duplicate Flag"}</span>
                             </div>
                           )}
                         </td>
@@ -910,6 +911,115 @@ export default function AdminDashboardPage() {
               </table>
             </div>
 
+            {/* 2. Mobile Responsive Card List (Visible on < sm) */}
+            <div className="block sm:hidden divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
+              {filteredReferrals.length === 0 ? (
+                <div className="py-12 px-4 text-center text-xs text-zinc-500">
+                  {referrals.length === 0
+                    ? "No referrals submitted yet. New claims submitted by volunteers will appear here automatically."
+                    : "No claims match the active filters or search query."}
+                </div>
+              ) : (
+                filteredReferrals.map((r) => (
+                  <div
+                    key={r.id}
+                    className={`p-4 space-y-3 text-xs transition-colors ${
+                      r.flaggedDuplicate ? "bg-amber-50/50 dark:bg-amber-950/10" : ""
+                    }`}
+                  >
+                    {/* Top Row: Volunteer & Status Badge */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm break-words">
+                          {r.volunteerName}
+                        </div>
+                        <div className="text-[11px] text-zinc-500 break-words mt-0.5">
+                          {r.volunteerTeam}
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        {r.status === "approved" && (
+                          <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 font-medium">
+                            <CheckCircle2 className="w-3 h-3" /> Approved
+                          </span>
+                        )}
+                        {r.status === "pending" && (
+                          <span className="text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 font-medium">
+                            <Clock className="w-3 h-3" /> Pending
+                          </span>
+                        )}
+                        {r.status === "rejected" && (
+                          <span className="text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800/40 px-2 py-0.5 rounded text-[11px] flex items-center gap-1 font-medium">
+                            <XCircle className="w-3 h-3" /> Rejected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Duplicate Flag Alert if present */}
+                    {r.flaggedDuplicate && (
+                      <div className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1.5 bg-amber-100 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/40 px-2.5 py-1.5 rounded font-medium">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="break-words">{r.duplicateReason || "Duplicate Flag"}</span>
+                      </div>
+                    )}
+
+                    {/* Buyer & Ticket Details Box */}
+                    <div className="bg-zinc-50 dark:bg-[#09090b] p-3 rounded border border-zinc-200 dark:border-zinc-800/70 text-xs space-y-1.5">
+                      <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                        <span className="text-zinc-500 text-[11px]">Buyer:</span>
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-200 text-right break-words">
+                          {r.buyerName}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                        <span className="text-zinc-500 text-[11px]">Ticket:</span>
+                        <span className="text-zinc-800 dark:text-zinc-300 text-right break-words">
+                          <span className="font-mono font-bold text-zinc-900 dark:text-white mr-1">
+                            {r.ticketQuantity}x
+                          </span>
+                          {r.ticketType}
+                        </span>
+                      </div>
+                      {(r.orderReference || r.buyerIdentifier) && (
+                        <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400 pt-0.5">
+                          <span className="text-zinc-500 text-[11px]">Order Ref:</span>
+                          <span className="font-mono font-medium text-zinc-900 dark:text-zinc-200 text-right break-all">
+                            {r.orderReference || (r.buyerIdentifier && !r.buyerIdentifier.includes("@") ? r.buyerIdentifier : "—")}
+                          </span>
+                        </div>
+                      )}
+                      {(r.buyerEmail || (r.buyerIdentifier && r.buyerIdentifier.includes("@"))) && (
+                        <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                          <span className="text-zinc-500 text-[11px]">Email:</span>
+                          <span className="font-sans text-zinc-800 dark:text-zinc-300 text-right break-all">
+                            {r.buyerEmail || r.buyerIdentifier}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Row: Submission Date & Review Button */}
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                        {formatDateTime(r.createdAt)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveReferral(r);
+                          setDecisionNotes(r.adminNotes || "");
+                        }}
+                        className="px-3.5 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 font-medium text-xs transition-all shadow-xs active:scale-95 flex items-center gap-1.5 shrink-0"
+                      >
+                        Review Claim
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
             <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
               <span>Showing {filteredReferrals.length} of {referrals.length} total claims from Supabase database.</span>
               <span className="text-zinc-600 dark:text-zinc-400">Scoring: {scoringConfig.pointsPerTicket} pts per approved ticket</span>
@@ -922,7 +1032,8 @@ export default function AdminDashboardPage() {
       {activeTab === "volunteers" && (
         <div className="space-y-4 animate-subtle-fade-up">
           <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Desktop Table View (Hidden on mobile < sm) */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
@@ -950,10 +1061,10 @@ export default function AdminDashboardPage() {
 
                       return (
                         <tr key={vol.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
-                          <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200">
+                          <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200 break-words">
                             {vol.fullName}
                           </td>
-                          <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                          <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400 break-words">
                             {vol.volunteerTeam}
                           </td>
                           <td className="py-3 px-4 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
@@ -976,6 +1087,61 @@ export default function AdminDashboardPage() {
               </table>
             </div>
 
+            {/* Mobile Responsive Cards View (Visible on < sm) */}
+            <div className="block sm:hidden divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
+              {volunteers.length === 0 ? (
+                <div className="py-12 px-4 text-center text-xs text-zinc-500">
+                  No registered volunteers found in public.profiles.
+                </div>
+              ) : (
+                volunteers.map((vol) => {
+                  const volReferrals = referrals.filter((r) => r.volunteerId === vol.id);
+                  const approvedTickets = volReferrals
+                    .filter((r) => r.status === "approved")
+                    .reduce((sum, r) => sum + r.ticketQuantity, 0);
+
+                  return (
+                    <div key={vol.id} className="p-4 space-y-2.5 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm break-words">
+                            {vol.fullName}
+                          </div>
+                          <div className="text-[11px] text-zinc-500 break-words mt-0.5">
+                            {vol.volunteerTeam}
+                          </div>
+                        </div>
+                        <span className="font-mono text-[10px] text-zinc-500 shrink-0">
+                          {formatDateTime(vol.createdAt)}
+                        </span>
+                      </div>
+
+                      <div className="bg-zinc-50 dark:bg-[#09090b] p-3 rounded border border-zinc-200 dark:border-zinc-800/70 text-xs space-y-1.5">
+                        <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                          <span className="text-zinc-500 text-[11px]">Phone:</span>
+                          <span className="font-mono text-zinc-800 dark:text-zinc-300">
+                            {vol.phoneNumber || "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                          <span className="text-zinc-500 text-[11px]">Submitted Claims:</span>
+                          <span className="font-mono font-medium text-zinc-800 dark:text-zinc-300">
+                            {volReferrals.length} claims
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                          <span className="text-zinc-500 text-[11px]">Approved Tickets:</span>
+                          <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                            {approvedTickets} tix ({approvedTickets * (scoringConfig.pointsPerTicket || 5)} pts)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
             <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500">
               {volunteers.length} verified volunteers registered on platform.
             </div>
@@ -987,7 +1153,8 @@ export default function AdminDashboardPage() {
       {activeTab === "teams" && (
         <div className="space-y-4 animate-subtle-fade-up">
           <div className="border border-zinc-200 dark:border-zinc-800/80 rounded bg-white dark:bg-[#111114] shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Desktop Table View (Hidden on mobile < sm) */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] font-medium bg-zinc-50 dark:bg-[#0e0e11]">
@@ -1008,7 +1175,7 @@ export default function AdminDashboardPage() {
                   ) : (
                     teamPerformance.map((tp) => (
                       <tr key={tp.teamName} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
-                        <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200">
+                        <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200 break-words">
                           {tp.teamName}
                         </td>
                         <td className="py-3 px-4 font-mono text-zinc-700 dark:text-zinc-300">
@@ -1028,6 +1195,49 @@ export default function AdminDashboardPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Responsive Cards View (Visible on < sm) */}
+            <div className="block sm:hidden divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans">
+              {teamPerformance.length === 0 ? (
+                <div className="py-12 px-4 text-center text-xs text-zinc-500">
+                  No team activity recorded yet.
+                </div>
+              ) : (
+                teamPerformance.map((tp) => (
+                  <div key={tp.teamName} className="p-4 space-y-2.5 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm break-words flex-1">
+                        {tp.teamName}
+                      </div>
+                      <div className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm shrink-0">
+                        {tp.points} <span className="text-[10px] font-normal text-zinc-500">pts</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-50 dark:bg-[#09090b] p-3 rounded border border-zinc-200 dark:border-zinc-800/70 text-xs space-y-1.5">
+                      <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                        <span className="text-zinc-500 text-[11px]">Volunteers:</span>
+                        <span className="font-mono text-zinc-800 dark:text-zinc-300">
+                          {tp.volunteerCount} members
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                        <span className="text-zinc-500 text-[11px]">Submitted Tickets:</span>
+                        <span className="font-mono text-zinc-800 dark:text-zinc-300">
+                          {tp.submittedTickets} tix
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2 text-zinc-600 dark:text-zinc-400">
+                        <span className="text-zinc-500 text-[11px]">Verified Tickets:</span>
+                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                          {tp.approvedTickets} tix ({tp.approvedReferrals} approved)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#0e0e11] text-[11px] text-zinc-500">

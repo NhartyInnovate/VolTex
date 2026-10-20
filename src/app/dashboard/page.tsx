@@ -16,6 +16,7 @@ import { formatDateTime } from "@/lib/utils";
 import { triggerConfetti } from "@/lib/confetti";
 import { AnimatedLeaderboard } from "@/components/AnimatedLeaderboard";
 import { LoadingSpinner, FullPageLoader } from "@/components/LoadingSpinner";
+import { OnboardingTour, TourStep } from "@/components/OnboardingTour";
 import {
   Copy,
   Check,
@@ -27,6 +28,7 @@ import {
   Clock,
   Sparkles,
   Share2,
+  HelpCircle,
 } from "lucide-react";
 
 export default function VolunteerDashboardPage() {
@@ -58,6 +60,43 @@ export default function VolunteerDashboardPage() {
   const [formBuyerEmail, setFormBuyerEmail] = useState("");
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null);
   const [formSuccessState, setFormSuccessState] = useState(false);
+
+  // Guided Onboarding Tour State
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Tour Steps Configuration
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        targetId: "tour-tab-templates",
+        title: "Promote with Confidence",
+        message:
+          "Find ready-made promotional messages you can copy and share to help drive TEDxGwarinpa ticket sales.",
+        tabKey: "templates",
+      },
+      {
+        targetId: "tour-btn-submit-referral",
+        title: "Submit Your Referrals",
+        message:
+          "When someone you've referred purchases a ticket, use this button to submit their details for review and potential challenge credit.",
+      },
+      {
+        targetId: "tour-tab-referrals",
+        title: "Track Your Claims",
+        message:
+          "Check the status of your submitted referral claims and see which have been approved, rejected, or are still pending.",
+        tabKey: "referrals",
+      },
+      {
+        targetId: "tour-tab-leaderboard",
+        title: "Check the Leaderboard",
+        message:
+          "See your current ranking and follow your progress in the ticket sales challenge.",
+        tabKey: "leaderboard",
+      },
+    ],
+    []
+  );
 
   // Load authenticated volunteer profile, referrals, live leaderboard, and scoring policy
   const loadDashboardData = useCallback(async () => {
@@ -180,6 +219,19 @@ export default function VolunteerDashboardPage() {
           setVolunteerRank(currentVolunteerRow.rank);
         }
       }
+
+      // 6. Check guided onboarding tour status for volunteer
+      if (profileData.role === "volunteer") {
+        const localKey = `voltex_tour_completed_${user.id}`;
+        const completedInLocalStorage =
+          typeof window !== "undefined" && window.localStorage.getItem(localKey) === "true";
+        const completedInMetadata = !!user.user_metadata?.has_completed_tour;
+
+        if (!completedInLocalStorage && !completedInMetadata) {
+          // Newly registered volunteer on first visit: launch tour
+          setIsTourOpen(true);
+        }
+      }
     } catch {
       setFetchError("An unexpected error occurred while connecting to the database.");
     } finally {
@@ -207,6 +259,44 @@ export default function VolunteerDashboardPage() {
     if (statusFilter === "all") return referrals;
     return referrals.filter((r) => r.status === statusFilter);
   }, [referrals, statusFilter]);
+
+  // Guided Onboarding Tour Completion / Dismiss Handler
+  const handleDismissTour = useCallback(async () => {
+    setIsTourOpen(false);
+
+    if (!profile?.id) return;
+
+    // 1. Immediately update local storage per-user
+    const localKey = `voltex_tour_completed_${profile.id}`;
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(localKey, "true");
+      } catch (err) {
+        console.warn("Could not save tour state to localStorage:", err);
+      }
+    }
+
+    // 2. Persist completion in Supabase user_metadata asynchronously
+    try {
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: { has_completed_tour: true },
+      });
+    } catch (err) {
+      // Non-blocking: failures do not impede the volunteer or restart the tour
+      console.warn("Could not persist tour completion to user_metadata:", err);
+    }
+  }, [profile?.id]);
+
+  // Synchronize active tab with tour step
+  const handleTourStepChange = useCallback(
+    (_stepIndex: number, step: TourStep) => {
+      if (step.tabKey && activeTab !== step.tabKey) {
+        setActiveTab(step.tabKey);
+      }
+    },
+    [activeTab]
+  );
 
   // Handle Copy link or template
   const handleCopy = (id: string, text: string) => {
@@ -373,6 +463,15 @@ export default function VolunteerDashboardPage() {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => setIsTourOpen(true)}
+            className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-2 rounded border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-[#111114] transition-all"
+            title="Take the guided onboarding tour"
+            aria-label="Take a tour"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-tedx-red" />
+            <span className="hidden sm:inline">Take a Tour</span>
+          </button>
+          <button
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-2 rounded border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-[#111114] transition-all disabled:opacity-50"
@@ -382,6 +481,7 @@ export default function VolunteerDashboardPage() {
             <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
+            id="tour-btn-submit-referral"
             onClick={() => {
               setFormSuccessState(false);
               setFormErrorMessage(null);
@@ -476,41 +576,46 @@ export default function VolunteerDashboardPage() {
         </div>
       </div>
 
-      {/* 4. Section Navigation Tabs: Referrals | Live Leaderboard | Promo Templates */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveTab("referrals")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
-            activeTab === "referrals"
-              ? "border-tedx-red text-zinc-900 dark:text-white"
-              : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <Ticket className="w-3.5 h-3.5" />
-          My Referral Claims ({referrals.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("leaderboard")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
-            activeTab === "leaderboard"
-              ? "border-tedx-red text-zinc-900 dark:text-white"
-              : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <Trophy className="w-3.5 h-3.5" />
-          Live Challenge Standings ({liveLeaderboard.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("templates")}
-          className={`px-4 py-2.5 font-medium border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
-            activeTab === "templates"
-              ? "border-tedx-red text-zinc-900 dark:text-white"
-              : "border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          Promotional Templates
-        </button>
+      {/* 4. Section Navigation Tabs: Promotional Templates | My Referral Claims | Live Challenge Standings */}
+      <div className="flex justify-center w-full">
+        <div className="inline-flex items-center justify-center p-1.5 rounded-xl bg-zinc-100 dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800/80 shadow-xs max-w-full overflow-x-auto no-scrollbar gap-1 sm:gap-1.5">
+          <button
+            id="tour-tab-templates"
+            onClick={() => setActiveTab("templates")}
+            className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
+              activeTab === "templates"
+                ? "bg-tedx-red text-white text-xs sm:text-[13px] font-semibold shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+            }`}
+          >
+            <Share2 className={`w-3.5 h-3.5 ${activeTab === "templates" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
+            <span>Promotional Templates</span>
+          </button>
+          <button
+            id="tour-tab-referrals"
+            onClick={() => setActiveTab("referrals")}
+            className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
+              activeTab === "referrals"
+                ? "bg-tedx-red text-white text-xs sm:text-[13px] font-semibold shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+            }`}
+          >
+            <Ticket className={`w-3.5 h-3.5 ${activeTab === "referrals" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
+            <span>My Referral Claims ({referrals.length})</span>
+          </button>
+          <button
+            id="tour-tab-leaderboard"
+            onClick={() => setActiveTab("leaderboard")}
+            className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
+              activeTab === "leaderboard"
+                ? "bg-tedx-red text-white text-xs sm:text-[13px] font-semibold shadow-xs"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
+            }`}
+          >
+            <Trophy className={`w-3.5 h-3.5 ${activeTab === "leaderboard" ? "text-white" : "text-zinc-500 dark:text-zinc-400"}`} />
+            <span>Live Challenge Standings ({liveLeaderboard.length})</span>
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: Referral History */}
@@ -700,9 +805,6 @@ export default function VolunteerDashboardPage() {
                 CONFERENCE_CONFIG.ticketUrl
               );
               const isCopied = copiedId === tpl.id;
-              const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
-                compiledMessage
-              )}`;
 
               return (
                 <div
@@ -710,41 +812,31 @@ export default function VolunteerDashboardPage() {
                   className="border border-zinc-200 dark:border-zinc-800/80 rounded-lg p-4 bg-white dark:bg-[#111114] space-y-3 flex flex-col justify-between shadow-xs"
                 >
                   <div className="space-y-1.5">
-                    <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
-                      {tpl.channel}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
+                        {tpl.channel}
+                      </div>
+                      <button
+                        onClick={() => handleCopy(tpl.id, compiledMessage)}
+                        aria-label={`Copy ${tpl.channel} text`}
+                        className="text-xs font-medium px-2.5 py-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 active:scale-[0.98] text-zinc-800 dark:text-zinc-200 transition-all flex items-center gap-1 shrink-0"
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-zinc-200" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy text
+                          </>
+                        )}
+                      </button>
                     </div>
                     <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed bg-zinc-50 dark:bg-[#09090b] p-3 rounded border border-zinc-200 dark:border-zinc-800/60 font-sans whitespace-pre-wrap">
                       {compiledMessage}
                     </p>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800/60 text-xs">
-                    <a
-                      href={whatsappShareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white active:scale-[0.98] transition-all underline underline-offset-4"
-                    >
-                      Share on WhatsApp ↗
-                    </a>
-
-                    <button
-                      onClick={() => handleCopy(tpl.id, compiledMessage)}
-                      aria-label={`Copy ${tpl.channel} text`}
-                      className="text-xs font-medium px-2.5 py-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 active:scale-[0.98] text-zinc-800 dark:text-zinc-200 transition-all flex items-center gap-1"
-                    >
-                      {isCopied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-zinc-200" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          Copy text
-                        </>
-                      )}
-                    </button>
                   </div>
                 </div>
               );
@@ -924,6 +1016,15 @@ export default function VolunteerDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 8. Guided Onboarding Tour Component */}
+      <OnboardingTour
+        steps={tourSteps}
+        isOpen={isTourOpen}
+        onFinish={handleDismissTour}
+        onSkip={handleDismissTour}
+        onStepChange={handleTourStepChange}
+      />
     </div>
   );
 }

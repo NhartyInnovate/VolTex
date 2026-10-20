@@ -556,21 +556,21 @@ export default function AdminDashboardPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
       {/* 1. Header with Live Status & Refresh */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-6 animate-subtle-fade-up">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tight break-words">
               Admin Command Center
             </h1>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded border bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/40 font-medium">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded border bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/40 font-medium shrink-0">
               Live Database
             </span>
           </div>
-          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1.5 leading-relaxed">
             Reconcile submitted claims, audit duplicates, configure scoring policy, and monitor live challenge operations.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -591,114 +591,116 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 2. Top-Level Genuine Platform Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-xs">
         {/* Total Volunteers */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-75 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-75 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
-            Volunteers <Users className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
+            Volunteers <Users className="w-3 h-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
           </span>
-          <span className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block">
+          <span className="text-lg sm:text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block truncate">
             {stats.totalVolunteers}
           </span>
         </div>
 
         {/* Total Referrals */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-100 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-100 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
-            Claims <Ticket className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
+            Claims <Ticket className="w-3 h-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
           </span>
-          <span className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block">
+          <span className="text-lg sm:text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block truncate">
             {stats.totalReferrals}
           </span>
         </div>
 
         {/* Pending Review */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-150 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-150 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
-            Pending <Clock className="w-3 h-3 text-amber-500" />
+            Pending <Clock className="w-3 h-3 text-amber-500 shrink-0" />
           </span>
-          <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1 block">
+          <span className="text-lg sm:text-xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1 block truncate">
             {stats.pending}
           </span>
         </div>
 
         {/* Duplicate Flags */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-200 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-200 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
-            Duplicates <ShieldAlert className="w-3 h-3 text-amber-500" />
+            Duplicates <ShieldAlert className="w-3 h-3 text-amber-500 shrink-0" />
           </span>
-          <span className={`text-xl font-bold font-mono mt-1 block ${stats.duplicates > 0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100"}`}>
+          <span className={`text-lg sm:text-xl font-bold font-mono mt-1 block truncate ${stats.duplicates > 0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100"}`}>
             {stats.duplicates}
           </span>
         </div>
 
         {/* Verified Tickets */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-250 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-250 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
-            Approved Tix <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+            Approved Tix <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
           </span>
-          <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1 block">
+          <span className="text-lg sm:text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1 block truncate">
             {stats.totalApprovedTickets}
           </span>
         </div>
 
         {/* Points Awarded */}
-        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-300 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
+        <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-2.5 sm:p-3 bg-white dark:bg-[#111114] shadow-xs animate-subtle-fade-up delay-300 hover:border-zinc-300 dark:hover:border-zinc-700/80 transition-colors">
           <span className="text-zinc-500 block text-[10px] uppercase tracking-wider flex items-center justify-between font-medium">
-            Points Awarded <Trophy className="w-3 h-3 text-tedx-red" />
+            Points Awarded <Trophy className="w-3 h-3 text-tedx-red shrink-0" />
           </span>
-          <span className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block">
+          <span className="text-lg sm:text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-1 block truncate">
             {stats.totalPointsAwarded} <span className="text-[10px] font-normal text-zinc-500">pts</span>
           </span>
         </div>
       </div>
 
       {/* 3. Navigation Tabs */}
-      <div className="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 text-xs no-scrollbar">
-        <button
-          onClick={() => setActiveTab("referrals")}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-            activeTab === "referrals"
-              ? "border-tedx-red text-tedx-red dark:text-white"
-              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <Ticket className="w-3.5 h-3.5" />
-          Referral Queue ({referrals.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("volunteers")}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-            activeTab === "volunteers"
-              ? "border-tedx-red text-tedx-red dark:text-white"
-              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          Volunteers ({volunteers.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("teams")}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-            activeTab === "teams"
-              ? "border-tedx-red text-tedx-red dark:text-white"
-              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" />
-          Team Performance ({teamPerformance.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("settings")}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-            activeTab === "settings"
-              ? "border-tedx-red text-tedx-red dark:text-white"
-              : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-          }`}
-        >
-          <Settings2 className="w-3.5 h-3.5" />
-          Scoring Policy
-        </button>
+      <div className="w-full overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex overflow-x-auto no-scrollbar py-0.5 gap-1 text-xs">
+          <button
+            onClick={() => setActiveTab("referrals")}
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
+              activeTab === "referrals"
+                ? "border-tedx-red text-tedx-red dark:text-white"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+            }`}
+          >
+            <Ticket className="w-3.5 h-3.5 shrink-0" />
+            <span>Referrals ({referrals.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("volunteers")}
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
+              activeTab === "volunteers"
+                ? "border-tedx-red text-tedx-red dark:text-white"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span>Volunteers ({volunteers.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("teams")}
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
+              activeTab === "teams"
+                ? "border-tedx-red text-tedx-red dark:text-white"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+            <span>Teams ({teamPerformance.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
+              activeTab === "settings"
+                ? "border-tedx-red text-tedx-red dark:text-white"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+            }`}
+          >
+            <Settings2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Scoring Policy</span>
+          </button>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -1440,75 +1442,75 @@ export default function AdminDashboardPage() {
 
       {/* 8. Reconcile / Review Modal */}
       {activeReferral && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
-          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-lg w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <button
               onClick={() => setActiveReferral(null)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all"
+              className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all p-1"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div>
+            <div className="pr-6">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">
                 Review Referral Claim
               </h3>
-              <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">
+              <p className="text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
                 Reconcile ticket claim against official Meeteor Hub transactions before crediting points.
               </p>
             </div>
 
-            <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3.5 bg-zinc-50 dark:bg-[#09090b] space-y-2.5">
-              <div className="flex justify-between">
+            <div className="border border-zinc-200 dark:border-zinc-800/80 rounded p-3 sm:p-3.5 bg-zinc-50 dark:bg-[#09090b] space-y-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                 <span className="text-zinc-500">Claimant Volunteer:</span>
-                <span className="text-zinc-900 dark:text-zinc-200 font-medium">
+                <span className="text-zinc-900 dark:text-zinc-200 font-medium break-words sm:text-right">
                   {activeReferral.volunteerName} ({activeReferral.volunteerTeam})
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                 <span className="text-zinc-500">Buyer Name:</span>
-                <span className="text-zinc-900 dark:text-zinc-200 font-medium">{activeReferral.buyerName}</span>
+                <span className="text-zinc-900 dark:text-zinc-200 font-medium break-words sm:text-right">{activeReferral.buyerName}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                 <span className="text-zinc-500">Ticket Type & Qty:</span>
-                <span className="text-zinc-900 dark:text-zinc-200 font-mono font-medium">
+                <span className="text-zinc-900 dark:text-zinc-200 font-mono font-medium sm:text-right">
                   {activeReferral.ticketQuantity}x {activeReferral.ticketType}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                 <span className="text-zinc-500">Order Reference:</span>
-                <span className="font-mono text-zinc-900 dark:text-zinc-200">
+                <span className="font-mono text-zinc-900 dark:text-zinc-200 break-all sm:text-right">
                   {activeReferral.orderReference || activeReferral.buyerIdentifier || "None"}
                 </span>
               </div>
               {activeReferral.buyerEmail && (
-                <div className="flex justify-between">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                   <span className="text-zinc-500">Buyer Email:</span>
-                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{activeReferral.buyerEmail}</span>
+                  <span className="font-mono text-zinc-700 dark:text-zinc-300 break-all sm:text-right">{activeReferral.buyerEmail}</span>
                 </div>
               )}
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                 <span className="text-zinc-500">Submitted At:</span>
-                <span className="font-mono text-zinc-600 dark:text-zinc-400">{formatDateTime(activeReferral.createdAt)}</span>
+                <span className="font-mono text-zinc-600 dark:text-zinc-400 sm:text-right">{formatDateTime(activeReferral.createdAt)}</span>
               </div>
 
               {/* DUPLICATE FLAG ALERT BOX */}
               {activeReferral.flaggedDuplicate && (
                 <div className="mt-2 p-2.5 rounded border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 space-y-1">
                   <div className="font-bold flex items-center gap-1.5 text-[11px] text-amber-900 dark:text-amber-400">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     DUPLICATE FLAG DETECTED
                   </div>
-                  <div className="text-[11px] leading-relaxed">
+                  <div className="text-[11px] leading-relaxed break-words">
                     {activeReferral.duplicateReason || "This claim matched existing records in the database."}
                   </div>
                   {activeReferral.duplicateSourceId && (
-                    <div className="text-[10px] text-amber-700 dark:text-amber-400/80 font-mono">
+                    <div className="text-[10px] text-amber-700 dark:text-amber-400/80 font-mono break-all">
                       Matched Source Claim ID: {activeReferral.duplicateSourceId}
                     </div>
                   )}
-                  <div className="text-[10px] text-amber-800 dark:text-amber-400/90 pt-1 font-semibold">
+                  <div className="text-[10px] text-amber-800 dark:text-amber-400/90 pt-1 font-semibold leading-relaxed">
                     Policy Rule: Duplicate-flagged claims CANNOT be approved without an organizer verification note confirming a legitimate distinct purchase.
                   </div>
                 </div>
@@ -1519,7 +1521,7 @@ export default function AdminDashboardPage() {
               <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Verification Notes (Logged to Permanent Audit Trail)
                 {activeReferral.flaggedDuplicate && (
-                  <span className="text-amber-600 dark:text-amber-400 ml-1 font-semibold">* Required for flagged claims</span>
+                  <span className="text-amber-600 dark:text-amber-400 ml-1 font-semibold block sm:inline">* Required for flagged claims</span>
                 )}
               </label>
               <textarea
@@ -1535,12 +1537,12 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setActiveReferral(null)}
                 disabled={isUpdatingStatus}
-                className="px-3 py-1.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all text-xs"
+                className="px-3 py-2 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all text-xs text-center border border-zinc-200 dark:border-zinc-800 sm:border-transparent"
               >
                 Close
               </button>
@@ -1548,7 +1550,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={isUpdatingStatus}
                 onClick={() => handleUpdateStatus(activeReferral.id, "rejected", decisionNotes)}
-                className="px-3 py-1.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 font-medium transition-all text-xs disabled:opacity-50 border border-zinc-300 dark:border-transparent flex items-center gap-1.5"
+                className="px-3 py-2 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 font-medium transition-all text-xs disabled:opacity-50 border border-zinc-300 dark:border-transparent flex items-center justify-center gap-1.5"
               >
                 {isUpdatingStatus ? (
                   <>
@@ -1563,7 +1565,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={isUpdatingStatus}
                 onClick={() => handleUpdateStatus(activeReferral.id, "approved", decisionNotes)}
-                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs text-xs disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs text-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {isUpdatingStatus ? (
                   <>
@@ -1581,8 +1583,8 @@ export default function AdminDashboardPage() {
 
       {/* 9. Policy Confirmation Modal */}
       {isConfirmingPolicyChange && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
-          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded max-w-md w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
+          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <h3 className="text-base font-bold text-zinc-900 dark:text-white">
               Confirm Database Policy Update
             </h3>
@@ -1601,12 +1603,12 @@ export default function AdminDashboardPage() {
               <strong>Notice:</strong> This change will update public standings across all volunteer dashboards and the live leaderboard.
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 disabled={isSavingPolicy}
                 onClick={() => setIsConfirmingPolicyChange(false)}
-                className="px-3 py-1.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
+                className="px-3 py-2 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all text-center border border-zinc-200 dark:border-zinc-800 sm:border-transparent"
               >
                 Cancel
               </button>
@@ -1614,7 +1616,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={isSavingPolicy}
                 onClick={handleSaveScoringPolicy}
-                className="px-3.5 py-1.5 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded bg-tedx-red hover:bg-tedx-darkred text-white font-semibold transition-all shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {isSavingPolicy ? (
                   <>

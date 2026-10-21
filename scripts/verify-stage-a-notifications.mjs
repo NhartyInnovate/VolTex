@@ -269,12 +269,16 @@ assert.ok(
   "Admin page must guard against duplicate or infinite hydration effects."
 );
 assert.ok(
+  adminPageContent.includes("dismissedQueryIdRef"),
+  "Admin page must track dismissed query ID to prevent in-flight reopening."
+);
+assert.ok(
   adminPageContent.includes("handleCloseReviewModal"),
   "Admin page must cleanly close modal and reset query state."
 );
 
 // Pure simulation of hydration logic:
-function simulateAdminHydration({ loading, adminProfile, referrals, searchParams, currentActiveReferral, handledRef }) {
+function simulateAdminHydration({ loading, adminProfile, referrals, searchParams, currentActiveReferral, handledRef, dismissedRef }) {
   if (loading || !adminProfile || referrals.length === 0) {
     return { activeReferral: currentActiveReferral, tab: "referrals", changed: false };
   }
@@ -287,7 +291,12 @@ function simulateAdminHydration({ loading, adminProfile, referrals, searchParams
 
   const requestedReferralId = searchParams.get("id") || searchParams.get("referral");
   if (requestedReferralId) {
-    if (handledRef.current === requestedReferralId && currentActiveReferral?.id === requestedReferralId) {
+    // If the user explicitly dismissed this referral, do not reopen it while router.replace() is in flight
+    if (dismissedRef && dismissedRef.current === requestedReferralId) {
+      return { activeReferral: currentActiveReferral, tab, changed: false };
+    }
+
+    if (handledRef.current === requestedReferralId) {
       return { activeReferral: currentActiveReferral, tab, changed: false };
     }
     handledRef.current = requestedReferralId;
@@ -299,8 +308,9 @@ function simulateAdminHydration({ loading, adminProfile, referrals, searchParams
     // Missing or invalid referral ID: no modal opened, no crash
     return { activeReferral: null, tab, changed: false };
   } else {
-    // When query parameters are cleared, reset the tracking ref
+    // When query parameters are cleared, reset both refs
     handledRef.current = null;
+    if (dismissedRef) dismissedRef.current = null;
     return { activeReferral: currentActiveReferral, tab, changed: false };
   }
 }
@@ -312,6 +322,7 @@ const mockReferrals = [
 
 // Test 5A: Valid referral link hydration
 const handledRefA = { current: null };
+const dismissedRefA = { current: null };
 const paramsA = new URLSearchParams("tab=referrals&id=ref-uuid-1");
 const resultA = simulateAdminHydration({
   loading: false,
@@ -320,6 +331,7 @@ const resultA = simulateAdminHydration({
   searchParams: paramsA,
   currentActiveReferral: null,
   handledRef: handledRefA,
+  dismissedRef: dismissedRefA,
 });
 assert.equal(resultA.activeReferral?.id, "ref-uuid-1", "Valid referral link must open target referral.");
 assert.equal(resultA.changed, true);
@@ -332,23 +344,40 @@ const resultA2 = simulateAdminHydration({
   searchParams: paramsA,
   currentActiveReferral: resultA.activeReferral,
   handledRef: handledRefA,
+  dismissedRef: dismissedRefA,
 });
 assert.equal(resultA2.changed, false, "Subsequent renders with same query param must not re-trigger.");
 
-// Test 5B-1: Single tap close resets URL and closes modal cleanly without requiring two clicks
+// Test 5B-1: First close tap sets activeReferral=null and records dismissedQueryIdRef
+// Even if old query param paramsA is STILL observed in flight before useSearchParams updates:
+dismissedRefA.current = "ref-uuid-1";
+const resultInFlight = simulateAdminHydration({
+  loading: false,
+  adminProfile: { role: "admin" },
+  referrals: mockReferrals,
+  searchParams: paramsA, // Old query param still present in flight!
+  currentActiveReferral: null, // modal set to null by handleCloseReviewModal
+  handledRef: handledRefA,
+  dismissedRef: dismissedRefA,
+});
+assert.equal(resultInFlight.activeReferral, null, "Modal must stay closed even if old query param is still present in flight.");
+
+// Test 5B-2: Later effect when Next.js updates useSearchParams with cleared query params
 const paramsCleared = new URLSearchParams("tab=referrals");
 const resultClose = simulateAdminHydration({
   loading: false,
   adminProfile: { role: "admin" },
   referrals: mockReferrals,
   searchParams: paramsCleared,
-  currentActiveReferral: null, // modal set to null by handleCloseReviewModal
+  currentActiveReferral: null,
   handledRef: handledRefA,
+  dismissedRef: dismissedRefA,
 });
-assert.equal(resultClose.activeReferral, null, "Modal must stay closed on single click.");
-assert.equal(handledRefA.current, null, "Tracking ref must be reset when query param is cleared.");
+assert.equal(resultClose.activeReferral, null, "Modal stays closed when query param clears.");
+assert.equal(handledRefA.current, null, "handledRef reset when cleared.");
+assert.equal(dismissedRefA.current, null, "dismissedRef reset when cleared.");
 
-// Test 5B-2: Reopening same referral immediately from notification re-opens modal on first tap
+// Test 5B-3: Reopening same referral immediately from notification re-opens modal on first tap
 const resultA3 = simulateAdminHydration({
   loading: false,
   adminProfile: { role: "admin" },
@@ -356,11 +385,12 @@ const resultA3 = simulateAdminHydration({
   searchParams: paramsA,
   currentActiveReferral: null,
   handledRef: handledRefA,
+  dismissedRef: dismissedRefA,
 });
 assert.equal(resultA3.activeReferral?.id, "ref-uuid-1", "Re-opening same referral after closing modal must succeed on single tap.");
 assert.equal(resultA3.changed, true);
 
-// Test 5B-3: Opening a different referral after the first
+// Test 5B-4: Opening a different referral after the first
 const paramsDiff = new URLSearchParams("tab=referrals&id=ref-uuid-2");
 const resultDiff = simulateAdminHydration({
   loading: false,
@@ -369,6 +399,7 @@ const resultDiff = simulateAdminHydration({
   searchParams: paramsDiff,
   currentActiveReferral: null,
   handledRef: handledRefA,
+  dismissedRef: dismissedRefA,
 });
 assert.equal(resultDiff.activeReferral?.id, "ref-uuid-2", "Opening a different referral must succeed.");
 assert.equal(resultDiff.changed, true);

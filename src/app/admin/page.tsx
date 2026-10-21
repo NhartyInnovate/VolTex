@@ -254,12 +254,18 @@ function AdminDashboardContent() {
     loadAdminData();
   }, [loadAdminData]);
 
-  // Safely hydrate query parameters (e.g. from notification links: /admin?tab=referrals&id=<referral-id>)
-  // Track the referral ID currently opened by query param to prevent infinite loops on the same render
+  // Track the referral ID opened from query parameter to prevent reopening after dismissal
   const openedFromQueryRef = useRef<string | null>(null);
+  // Track whether the user explicitly dismissed the modal so transition renders cannot reopen it
+  const dismissedQueryIdRef = useRef<string | null>(null);
 
   // Close modal and cleanly remove referral ID from URL using Next.js router
   const handleCloseReviewModal = useCallback(() => {
+    // Record the referral ID being dismissed
+    const currentId = searchParams.get("id") || searchParams.get("referral");
+    if (currentId) {
+      dismissedQueryIdRef.current = currentId;
+    }
     setActiveReferral(null);
     setDecisionNotes("");
 
@@ -283,8 +289,13 @@ function AdminDashboardContent() {
 
     const requestedReferralId = searchParams.get("id") || searchParams.get("referral");
     if (requestedReferralId) {
+      // If the user explicitly dismissed this referral, do not reopen it while router.replace() is in flight
+      if (dismissedQueryIdRef.current === requestedReferralId) {
+        return;
+      }
+
       // If modal is already showing this referral, do not re-set
-      if (openedFromQueryRef.current === requestedReferralId && activeReferral?.id === requestedReferralId) {
+      if (openedFromQueryRef.current === requestedReferralId) {
         return;
       }
 
@@ -301,10 +312,11 @@ function AdminDashboardContent() {
         setDecisionNotes(targetReferral.adminNotes || "");
       }
     } else {
-      // Query param is empty / cleared: reset openedFromQueryRef so reopening works immediately
+      // Query param is empty / cleared: reset both refs so reopening from notification works immediately
       openedFromQueryRef.current = null;
+      dismissedQueryIdRef.current = null;
     }
-  }, [loading, adminProfile, referrals, searchParams, selectedStatus, activeReferral]);
+  }, [loading, adminProfile, referrals, searchParams, selectedStatus]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

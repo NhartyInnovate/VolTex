@@ -19,6 +19,20 @@ export function formatDateTime(isoString: string): string {
   }
 }
 
+export function formatDate(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    return new Intl.DateTimeFormat("en-NG", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(d);
+  } catch {
+    return isoString;
+  }
+}
+
+
 /**
  * Returns the base application URL configured via NEXT_PUBLIC_APP_URL,
  * with trailing slash removed. Falls back to window.location.origin in browser,

@@ -189,12 +189,24 @@ export function Navbar() {
             {authResolved && currentUser && (
               <>
                 {currentUser.role === "admin" ? (
-                  <Link
-                    href="/admin"
-                    className="hover:text-white transition-colors duration-150 text-white font-semibold focus:outline-none focus:underline"
-                  >
-                    Admin Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      href="/admin"
+                      className={`hover:text-white transition-colors duration-150 font-semibold focus:outline-none focus:underline ${
+                        pathname === "/admin" ? "text-white underline underline-offset-4" : "text-zinc-300"
+                      }`}
+                    >
+                      Command Center
+                    </Link>
+                    <Link
+                      href="/admin/users"
+                      className={`hover:text-white transition-colors duration-150 font-semibold focus:outline-none focus:underline ${
+                        pathname === "/admin/users" ? "text-white underline underline-offset-4" : "text-zinc-300"
+                      }`}
+                    >
+                      User Management
+                    </Link>
+                  </>
                 ) : (
                   <Link
                     href="/dashboard"
@@ -275,13 +287,23 @@ export function Navbar() {
                     </button>
 
                     {/* Only show navigation link if not already on the destination page */}
-                    {currentUser.role === "admin" && pathname !== "/admin" && (
-                      <Link
-                        href="/admin"
-                        className="block px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
-                      >
-                        Admin Portal
-                      </Link>
+                    {currentUser.role === "admin" && (
+                      <>
+                        {pathname !== "/admin" && (
+                          <Link
+                            href="/admin"
+                            className="block px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
+                          >
+                            Admin Command Center
+                          </Link>
+                        )}
+                        <Link
+                          href="/admin/users"
+                          className="block px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
+                        >
+                          User Management
+                        </Link>
+                      </>
                     )}
                     {currentUser.role !== "admin" && pathname !== "/dashboard" && (
                       <Link
@@ -389,13 +411,22 @@ export function Navbar() {
               </div>
 
               {currentUser.role === "admin" ? (
-                <Link
-                  href="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block text-zinc-200 hover:text-white py-1.5 transition-colors text-xs font-medium"
-                >
-                  Admin Dashboard
-                </Link>
+                <>
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-zinc-200 hover:text-white py-1.5 transition-colors text-xs font-medium"
+                  >
+                    Admin Command Center
+                  </Link>
+                  <Link
+                    href="/admin/users"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-zinc-200 hover:text-white py-1.5 transition-colors text-xs font-medium"
+                  >
+                    User Management
+                  </Link>
+                </>
               ) : (
                 <Link
                   href="/dashboard"

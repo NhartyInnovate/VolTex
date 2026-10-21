@@ -28,6 +28,19 @@ export interface UserProfile {
   createdAt: string;
 }
 
+export interface AdminManagedUser {
+  id: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  volunteerTeam: string;
+  role: UserRole;
+  createdAt: string;
+  referralCount: number;
+  approvedTickets: number;
+}
+
+
 export interface ReferralRecord {
   id: string;
   volunteerId: string;

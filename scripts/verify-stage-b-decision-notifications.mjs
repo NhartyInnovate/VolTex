@@ -294,6 +294,18 @@ assert.ok(
   dashboardContent.includes("selectedReferralId"),
   "Volunteer dashboard must highlight target referral upon notification navigation."
 );
+assert.ok(
+  dashboardContent.includes("createPortal("),
+  "Volunteer dashboard submit referral modal must use createPortal to escape ancestor transforms."
+);
+assert.ok(
+  dashboardContent.includes("document.body"),
+  "Volunteer dashboard submit referral modal must portal directly to document.body."
+);
+assert.ok(
+  dashboardContent.includes("100dvh"),
+  "Volunteer dashboard submit referral modal must account for dynamic mobile viewport height (100dvh)."
+);
 
 const routeContent = fs.readFileSync(
   path.join(rootDir, "src", "app", "api", "notifications", "notify-volunteer-decision", "route.ts"),

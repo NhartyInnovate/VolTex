@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -66,6 +67,12 @@ function VolunteerDashboardContent() {
 
   // Guided Onboarding Tour State
   const [isTourOpen, setIsTourOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Tour Steps Configuration
   const tourSteps: TourStep[] = useMemo(
@@ -986,20 +993,25 @@ function VolunteerDashboardContent() {
         </div>
       )}
 
-      {/* 5. Referral Submission Modal (Viewport Responsive) */}
-      {isSubmitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-backdrop">
-          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-6 space-y-5 relative animate-modal shadow-2xl max-h-[90vh] overflow-y-auto">
+      {/* 5. Referral Submission Modal (Viewport Responsive via Portal) */}
+      {isSubmitModalOpen && mounted && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="submit-referral-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop"
+        >
+          <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 sm:p-6 space-y-4 sm:space-y-5 relative animate-modal shadow-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsSubmitModalOpen(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 active:scale-95 transition-all"
+              className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 active:scale-95 transition-all p-1"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div>
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+              <h3 id="submit-referral-title" className="text-base font-bold text-zinc-900 dark:text-white">
                 Submit Referral Claim
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -1156,7 +1168,7 @@ function VolunteerDashboardContent() {
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* 8. Guided Onboarding Tour Component */}
       <OnboardingTour

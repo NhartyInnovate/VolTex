@@ -258,23 +258,16 @@ function AdminDashboardContent() {
   // Track the referral ID currently opened by query param to prevent infinite loops on the same render
   const openedFromQueryRef = useRef<string | null>(null);
 
-  // Close modal and cleanly remove referral ID from URL without full page reload
+  // Close modal and cleanly remove referral ID from URL using Next.js router
   const handleCloseReviewModal = useCallback(() => {
     setActiveReferral(null);
     setDecisionNotes("");
-    openedFromQueryRef.current = null;
 
-    // Clear id / referral query param from URL so reopening same or different referral works cleanly
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("id") || url.searchParams.has("referral")) {
-        url.searchParams.delete("id");
-        url.searchParams.delete("referral");
-        const nextUrl = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : "");
-        window.history.replaceState(null, "", nextUrl);
-      }
-    }
-  }, []);
+    // Remove id / referral from query parameters via Next.js router so useSearchParams() updates
+    const currentTab = searchParams.get("tab") || "referrals";
+    const nextUrl = currentTab ? `/admin?tab=${encodeURIComponent(currentTab)}` : "/admin";
+    router.replace(nextUrl, { scroll: false });
+  }, [router, searchParams]);
 
   useEffect(() => {
     // Only attempt hydration once data has finished loading and an admin is confirmed
@@ -307,6 +300,9 @@ function AdminDashboardContent() {
         setActiveReferral(targetReferral);
         setDecisionNotes(targetReferral.adminNotes || "");
       }
+    } else {
+      // Query param is empty / cleared: reset openedFromQueryRef so reopening works immediately
+      openedFromQueryRef.current = null;
     }
   }, [loading, adminProfile, referrals, searchParams, selectedStatus, activeReferral]);
 

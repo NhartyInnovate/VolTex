@@ -287,7 +287,7 @@ function simulateAdminHydration({ loading, adminProfile, referrals, searchParams
 
   const requestedReferralId = searchParams.get("id") || searchParams.get("referral");
   if (requestedReferralId) {
-    if (handledRef.current === requestedReferralId) {
+    if (handledRef.current === requestedReferralId && currentActiveReferral?.id === requestedReferralId) {
       return { activeReferral: currentActiveReferral, tab, changed: false };
     }
     handledRef.current = requestedReferralId;
@@ -298,9 +298,11 @@ function simulateAdminHydration({ loading, adminProfile, referrals, searchParams
     }
     // Missing or invalid referral ID: no modal opened, no crash
     return { activeReferral: null, tab, changed: false };
+  } else {
+    // When query parameters are cleared, reset the tracking ref
+    handledRef.current = null;
+    return { activeReferral: currentActiveReferral, tab, changed: false };
   }
-
-  return { activeReferral: currentActiveReferral, tab, changed: false };
 }
 
 const mockReferrals = [
@@ -333,8 +335,20 @@ const resultA2 = simulateAdminHydration({
 });
 assert.equal(resultA2.changed, false, "Subsequent renders with same query param must not re-trigger.");
 
-// Test 5B-2: Closing modal resets tracking so tapping View details again reopens it
-handledRefA.current = null; // matches handleCloseReviewModal() resetting openedFromQueryRef.current
+// Test 5B-1: Single tap close resets URL and closes modal cleanly without requiring two clicks
+const paramsCleared = new URLSearchParams("tab=referrals");
+const resultClose = simulateAdminHydration({
+  loading: false,
+  adminProfile: { role: "admin" },
+  referrals: mockReferrals,
+  searchParams: paramsCleared,
+  currentActiveReferral: null, // modal set to null by handleCloseReviewModal
+  handledRef: handledRefA,
+});
+assert.equal(resultClose.activeReferral, null, "Modal must stay closed on single click.");
+assert.equal(handledRefA.current, null, "Tracking ref must be reset when query param is cleared.");
+
+// Test 5B-2: Reopening same referral immediately from notification re-opens modal on first tap
 const resultA3 = simulateAdminHydration({
   loading: false,
   adminProfile: { role: "admin" },
@@ -343,7 +357,7 @@ const resultA3 = simulateAdminHydration({
   currentActiveReferral: null,
   handledRef: handledRefA,
 });
-assert.equal(resultA3.activeReferral?.id, "ref-uuid-1", "Re-opening same referral after closing modal must succeed.");
+assert.equal(resultA3.activeReferral?.id, "ref-uuid-1", "Re-opening same referral after closing modal must succeed on single tap.");
 assert.equal(resultA3.changed, true);
 
 // Test 5B-3: Opening a different referral after the first

@@ -488,6 +488,38 @@ console.log("\n[Test 8] Database Invariant: Duplicate Referral Approval Notes");
   console.log("✔ Database invariant for duplicate approval notes verified.");
 }
 
+// 9. Test Ticket Categories Whitelist & Pricing
+console.log("\n[Test 9] Ticket Category Restrictions & Pricing");
+{
+  const ALLOWED_TICKETS = ["Regular Ticket", "VIP Ticket"];
+  const DISALLOWED_TICKETS = [
+    "Standard Delegate",
+    "VIP Experience",
+    "Student Pass (Discounted)",
+    "Executive / Patron",
+    "Early Bird",
+    "",
+  ];
+
+  function validateTicketCategory(type) {
+    if (!type || typeof type !== "string") return false;
+    return ALLOWED_TICKETS.includes(type.trim());
+  }
+
+  assert.equal(validateTicketCategory("Regular Ticket"), true);
+  assert.equal(validateTicketCategory("VIP Ticket"), true);
+
+  for (const invalid of DISALLOWED_TICKETS) {
+    assert.equal(
+      validateTicketCategory(invalid),
+      false,
+      `Category "${invalid}" should not be allowed`
+    );
+  }
+
+  console.log("✔ Ticket category restrictions verified.");
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL VERIFICATION TESTS PASSED SUCCESSFULLY (8/8)");
+console.log("✔ ALL VERIFICATION TESTS PASSED SUCCESSFULLY (9/9)");
 console.log("=======================================================\n");

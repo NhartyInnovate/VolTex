@@ -62,13 +62,27 @@ export const DEFAULT_SCORING_CONFIG = {
 };
 
 export const TICKET_TYPES = [
-  "Standard Delegate",
-  "VIP Experience",
-  "Student Pass (Discounted)",
-  "Executive / Patron",
+  "Regular Ticket",
+  "VIP Ticket",
 ] as const;
 
 export type TicketType = (typeof TICKET_TYPES)[number];
+
+export const TICKET_DETAILS: Record<
+  TicketType,
+  { price: number; formattedPrice: string; label: string }
+> = {
+  "Regular Ticket": {
+    price: 10000,
+    formattedPrice: "₦10,000",
+    label: "Regular Ticket — ₦10,000",
+  },
+  "VIP Ticket": {
+    price: 20000,
+    formattedPrice: "₦20,000",
+    label: "VIP Ticket — ₦20,000",
+  },
+};
 
 /**
  * Pre-written promotional messages for volunteers to share with their network.

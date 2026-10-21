@@ -8,6 +8,7 @@ import {
   DEFAULT_SCORING_CONFIG,
   PROMOTIONAL_TEMPLATES,
   TICKET_TYPES,
+  TICKET_DETAILS,
   getSafeVolunteerTeam,
 } from "@/config/constants";
 import { calculateVolunteerSummary } from "@/lib/scoring";
@@ -1017,7 +1018,7 @@ export default function VolunteerDashboardPage() {
                     >
                       {TICKET_TYPES.map((type) => (
                         <option key={type} value={type}>
-                          {type}
+                          {TICKET_DETAILS[type]?.label || type}
                         </option>
                       ))}
                     </select>

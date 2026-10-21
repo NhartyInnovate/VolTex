@@ -265,8 +265,12 @@ assert.ok(
   "Admin page must wrap content using useSearchParams in Suspense boundary."
 );
 assert.ok(
-  adminPageContent.includes("handledQueryParamRef"),
+  adminPageContent.includes("openedFromQueryRef"),
   "Admin page must guard against duplicate or infinite hydration effects."
+);
+assert.ok(
+  adminPageContent.includes("handleCloseReviewModal"),
+  "Admin page must cleanly close modal and reset query state."
 );
 
 // Pure simulation of hydration logic:
@@ -318,7 +322,7 @@ const resultA = simulateAdminHydration({
 assert.equal(resultA.activeReferral?.id, "ref-uuid-1", "Valid referral link must open target referral.");
 assert.equal(resultA.changed, true);
 
-// Test 5B: Idempotent / no duplicate trigger on re-render
+// Test 5B: Idempotent / no duplicate trigger on same render if active
 const resultA2 = simulateAdminHydration({
   loading: false,
   adminProfile: { role: "admin" },
@@ -328,6 +332,32 @@ const resultA2 = simulateAdminHydration({
   handledRef: handledRefA,
 });
 assert.equal(resultA2.changed, false, "Subsequent renders with same query param must not re-trigger.");
+
+// Test 5B-2: Closing modal resets tracking so tapping View details again reopens it
+handledRefA.current = null; // matches handleCloseReviewModal() resetting openedFromQueryRef.current
+const resultA3 = simulateAdminHydration({
+  loading: false,
+  adminProfile: { role: "admin" },
+  referrals: mockReferrals,
+  searchParams: paramsA,
+  currentActiveReferral: null,
+  handledRef: handledRefA,
+});
+assert.equal(resultA3.activeReferral?.id, "ref-uuid-1", "Re-opening same referral after closing modal must succeed.");
+assert.equal(resultA3.changed, true);
+
+// Test 5B-3: Opening a different referral after the first
+const paramsDiff = new URLSearchParams("tab=referrals&id=ref-uuid-2");
+const resultDiff = simulateAdminHydration({
+  loading: false,
+  adminProfile: { role: "admin" },
+  referrals: mockReferrals,
+  searchParams: paramsDiff,
+  currentActiveReferral: null,
+  handledRef: handledRefA,
+});
+assert.equal(resultDiff.activeReferral?.id, "ref-uuid-2", "Opening a different referral must succeed.");
+assert.equal(resultDiff.changed, true);
 
 // Test 5C: Invalid / missing referral ID does not crash or open invalid modal
 const handledRefC = { current: null };

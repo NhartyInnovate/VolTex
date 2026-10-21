@@ -255,7 +255,26 @@ function AdminDashboardContent() {
   }, [loadAdminData]);
 
   // Safely hydrate query parameters (e.g. from notification links: /admin?tab=referrals&id=<referral-id>)
-  const handledQueryParamRef = useRef<string | null>(null);
+  // Track the referral ID currently opened by query param to prevent infinite loops on the same render
+  const openedFromQueryRef = useRef<string | null>(null);
+
+  // Close modal and cleanly remove referral ID from URL without full page reload
+  const handleCloseReviewModal = useCallback(() => {
+    setActiveReferral(null);
+    setDecisionNotes("");
+    openedFromQueryRef.current = null;
+
+    // Clear id / referral query param from URL so reopening same or different referral works cleanly
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("id") || url.searchParams.has("referral")) {
+        url.searchParams.delete("id");
+        url.searchParams.delete("referral");
+        const nextUrl = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : "");
+        window.history.replaceState(null, "", nextUrl);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // Only attempt hydration once data has finished loading and an admin is confirmed
@@ -271,12 +290,14 @@ function AdminDashboardContent() {
 
     const requestedReferralId = searchParams.get("id") || searchParams.get("referral");
     if (requestedReferralId) {
-      // Prevent infinite effects or duplicate handling for the same query parameter
-      if (handledQueryParamRef.current === requestedReferralId) return;
-      handledQueryParamRef.current = requestedReferralId;
+      // If modal is already showing this referral, do not re-set
+      if (openedFromQueryRef.current === requestedReferralId && activeReferral?.id === requestedReferralId) {
+        return;
+      }
 
       const targetReferral = referrals.find((r) => r.id === requestedReferralId);
       if (targetReferral) {
+        openedFromQueryRef.current = requestedReferralId;
         // Switch to referrals queue tab so context matches
         setActiveTab("referrals");
         // Ensure status filter does not hide the referral from view if user dismisses modal
@@ -284,9 +305,10 @@ function AdminDashboardContent() {
           setSelectedStatus("all");
         }
         setActiveReferral(targetReferral);
+        setDecisionNotes(targetReferral.adminNotes || "");
       }
     }
-  }, [loading, adminProfile, referrals, searchParams, selectedStatus]);
+  }, [loading, adminProfile, referrals, searchParams, selectedStatus, activeReferral]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -498,8 +520,7 @@ function AdminDashboardContent() {
       setActionSuccess(
         `Referral successfully marked as ${newStatus.toUpperCase()}.`
       );
-      setActiveReferral(null);
-      setDecisionNotes("");
+      handleCloseReviewModal();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update referral status.";
@@ -1495,7 +1516,7 @@ function AdminDashboardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-backdrop">
           <div className="bg-white dark:bg-[#111114] border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-lg w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 space-y-4 relative text-xs animate-modal shadow-2xl">
             <button
-              onClick={() => setActiveReferral(null)}
+              onClick={handleCloseReviewModal}
               className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all p-1"
               aria-label="Close"
             >
@@ -1590,7 +1611,7 @@ function AdminDashboardContent() {
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setActiveReferral(null)}
+                onClick={handleCloseReviewModal}
                 disabled={isUpdatingStatus}
                 className="px-3 py-2 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all text-xs text-center border border-zinc-200 dark:border-zinc-800 sm:border-transparent"
               >

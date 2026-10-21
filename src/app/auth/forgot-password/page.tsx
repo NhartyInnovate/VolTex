@@ -70,6 +70,9 @@ export default function ForgotPasswordPage() {
               <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 If an account exists for <strong className="text-zinc-900 dark:text-zinc-200">{email}</strong>, you will receive an email with instructions to securely choose a new password.
               </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal bg-zinc-50 dark:bg-zinc-900/60 p-2.5 rounded border border-zinc-200 dark:border-zinc-800/60">
+                💡 <strong>Tip:</strong> If accessing email on a mobile device, open the recovery link in the same browser app where you initiated the reset.
+              </p>
               <div className="pt-2">
                 <Link
                   href="/auth/login"

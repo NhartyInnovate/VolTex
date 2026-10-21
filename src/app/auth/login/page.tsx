@@ -28,7 +28,14 @@ function LoginForm() {
     }
     const queryError = searchParams.get("error");
     if (queryError) {
-      setErrorMessage(decodeURIComponent(queryError));
+      const decoded = decodeURIComponent(queryError);
+      if (decoded.includes("PKCE code verifier not found in storage") || decoded.includes("code verifier")) {
+        setErrorMessage(
+          "Verification link was opened in a different browser or app than where registration started. Please open the link in the same browser app or try signing in below."
+        );
+      } else {
+        setErrorMessage(decoded);
+      }
     }
   }, [searchParams]);
 

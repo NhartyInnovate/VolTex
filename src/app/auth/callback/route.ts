@@ -1,6 +1,7 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { getSafeRedirectPath } from "@/lib/utils";
 
 interface CookieToSet {
   name: string;
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/";
+  const rawNext = searchParams.get("next");
   const code = searchParams.get("code");
   const error = searchParams.get("error");
   const error_description = searchParams.get("error_description");
@@ -62,9 +63,9 @@ export async function GET(request: NextRequest) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!exchangeError) {
-      // Determine destination: if next is explicitly reset-password, navigate there
-      const targetPath = next.startsWith("/") ? next : `/${next}`;
-      const redirectResponse = NextResponse.redirect(new URL(targetPath, baseUrl));
+      // Determine destination: sanitize next target path to prevent open redirects
+      const safeNext = getSafeRedirectPath(rawNext, "/dashboard");
+      const redirectResponse = NextResponse.redirect(new URL(safeNext, baseUrl));
       // Copy all updated session cookies to the redirect response
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
@@ -86,14 +87,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (!verifyError) {
-      let targetPath = next.startsWith("/") ? next : `/${next}`;
+      let defaultTarget = "/dashboard";
       if (type === "recovery") {
-        targetPath = "/auth/reset-password";
+        defaultTarget = "/auth/reset-password";
       } else if (type === "signup" || type === "email") {
-        targetPath = "/auth/login?verified=true";
+        defaultTarget = "/auth/login?verified=true";
       }
 
-      const redirectResponse = NextResponse.redirect(new URL(targetPath, baseUrl));
+      const safeNext = getSafeRedirectPath(rawNext, defaultTarget);
+      const redirectResponse = NextResponse.redirect(new URL(safeNext, baseUrl));
       // Copy all updated session cookies to the redirect response
       response.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);

@@ -59,3 +59,34 @@ export function getAppUrl(): string {
   return "http://localhost:3000";
 }
 
+/**
+ * Validates and sanitizes a target redirect path to prevent open redirect vulnerabilities.
+ * Enforces strictly relative paths starting with a single '/' and rejects protocol-relative ('//')
+ * or backslash ('\') paths.
+ */
+export function getSafeRedirectPath(rawPath?: string | null, defaultFallback: string = "/dashboard"): string {
+  if (!rawPath || typeof rawPath !== "string") {
+    return defaultFallback;
+  }
+
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(rawPath.trim());
+  } catch {
+    return defaultFallback;
+  }
+
+  // Reject protocol-relative '//', backslashes, or control schemes
+  if (
+    !decoded.startsWith("/") ||
+    decoded.startsWith("//") ||
+    decoded.startsWith("/\\") ||
+    decoded.includes(":") ||
+    decoded.includes("\\")
+  ) {
+    return defaultFallback;
+  }
+
+  return decoded;
+}
+

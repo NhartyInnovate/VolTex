@@ -391,6 +391,15 @@ export default function VolunteerDashboardPage() {
       setFormSuccessState(true);
       triggerConfetti({ type: "referral" });
 
+      // Non-blocking asynchronous dispatch: notify all administrators in-app
+      fetch("/api/notifications/notify-admin-referral", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referralId: inserted.id }),
+      }).catch(() => {
+        // Silently catch network failures so volunteer submission state is completely unaffected
+      });
+
       // Reset form inputs
       setFormBuyerName("");
       setFormIdentifier("");

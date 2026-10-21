@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, Suspense, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   CONFERENCE_CONFIG,
@@ -47,8 +47,9 @@ interface VolunteerProfileSummary {
   createdAt: string;
 }
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Admin user & permission state
   const [adminProfile, setAdminProfile] = useState<UserProfile | null>(null);
@@ -252,6 +253,40 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadAdminData();
   }, [loadAdminData]);
+
+  // Safely hydrate query parameters (e.g. from notification links: /admin?tab=referrals&id=<referral-id>)
+  const handledQueryParamRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Only attempt hydration once data has finished loading and an admin is confirmed
+    if (loading || !adminProfile || referrals.length === 0) return;
+
+    const requestedTab = searchParams.get("tab");
+    if (
+      requestedTab &&
+      ["referrals", "volunteers", "teams", "settings"].includes(requestedTab)
+    ) {
+      setActiveTab(requestedTab as "referrals" | "volunteers" | "teams" | "settings");
+    }
+
+    const requestedReferralId = searchParams.get("id") || searchParams.get("referral");
+    if (requestedReferralId) {
+      // Prevent infinite effects or duplicate handling for the same query parameter
+      if (handledQueryParamRef.current === requestedReferralId) return;
+      handledQueryParamRef.current = requestedReferralId;
+
+      const targetReferral = referrals.find((r) => r.id === requestedReferralId);
+      if (targetReferral) {
+        // Switch to referrals queue tab so context matches
+        setActiveTab("referrals");
+        // Ensure status filter does not hide the referral from view if user dismisses modal
+        if (selectedStatus !== "all" && targetReferral.status !== selectedStatus) {
+          setSelectedStatus("all");
+        }
+        setActiveReferral(targetReferral);
+      }
+    }
+  }, [loading, adminProfile, referrals, searchParams, selectedStatus]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -1647,5 +1682,20 @@ export default function AdminDashboardPage() {
         </div>
       , document.body)}
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <FullPageLoader
+          message="Loading admin command center..."
+          label="Loading admin command center"
+        />
+      }
+    >
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

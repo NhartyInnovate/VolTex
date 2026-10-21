@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Menu, X, LogOut, ChevronDown, User } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "./NotificationBell";
 import { LoadingSpinner } from "./LoadingSpinner";
 
 interface AuthUserSession {
@@ -241,7 +242,9 @@ export function Navbar() {
                 </Link>
               </>
             ) : (
-              <div className="relative" ref={dropdownRef}>
+              <>
+                <NotificationBell />
+                <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center gap-2 text-xs font-medium text-zinc-200 hover:text-white bg-zinc-900 border border-zinc-700/80 hover:border-zinc-600 px-3 py-1.5 rounded transition-all active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-tedx-red"
@@ -334,11 +337,13 @@ export function Navbar() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+        </div>
 
-          {/* Mobile Right Controls: Theme Toggle + Menu Button */}
+          {/* Mobile Right Controls: Notification Bell + Theme Toggle + Menu Button */}
           <div className="flex md:hidden items-center gap-2">
+            {currentUser && <NotificationBell />}
             <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

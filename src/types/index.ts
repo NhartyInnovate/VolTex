@@ -80,3 +80,22 @@ export interface ScoringSummary {
   points: number;
   carryoverTickets: number;
 }
+
+export type NotificationType =
+  | "new_referral"
+  | "referral_approved"
+  | "referral_rejected"
+  | "system";
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  linkUrl?: string | null;
+  metadata?: Record<string, unknown>;
+  deduplicationKey: string;
+  isRead: boolean;
+  createdAt: string;
+}

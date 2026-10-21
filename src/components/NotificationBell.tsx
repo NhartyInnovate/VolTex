@@ -46,9 +46,9 @@ export function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click or touch
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
@@ -57,7 +57,11 @@ export function NotificationBell() {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const handleMarkAsRead = async (id: string, linkUrl?: string | null) => {
@@ -119,18 +123,18 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded border border-zinc-800 bg-[#09090b] shadow-2xl z-50 text-xs overflow-hidden animate-subtle-fade-up">
+        <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-auto sm:mt-2 max-w-[calc(100vw-24px)] sm:max-w-none sm:w-96 rounded-lg border border-zinc-800 bg-[#09090b] shadow-2xl z-50 text-xs overflow-hidden animate-subtle-fade-up">
           {/* Header */}
           <div className="px-3.5 py-2.5 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-950/60">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-white">Notifications</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="font-bold text-white truncate">Notifications</span>
               {unreadCount > 0 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-tedx-red/20 text-tedx-red border border-tedx-red/30 font-semibold">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-tedx-red/20 text-tedx-red border border-tedx-red/30 font-semibold shrink-0">
                   {unreadCount} new
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
@@ -152,7 +156,7 @@ export function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-[360px] overflow-y-auto divide-y divide-zinc-800/60">
+          <div className="max-h-[min(65vh,420px)] sm:max-h-[380px] overflow-y-auto divide-y divide-zinc-800/60">
             {notifications.length === 0 ? (
               <div className="py-8 px-4 text-center text-zinc-500">
                 <Bell className="w-6 h-6 mx-auto mb-2 text-zinc-700 opacity-60" />
@@ -172,7 +176,7 @@ export function NotificationBell() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-baseline justify-between gap-1.5 sm:gap-2">
                       <p className={`font-semibold text-xs truncate ${n.isRead ? "text-zinc-300" : "text-white"}`}>
                         {n.title}
                       </p>

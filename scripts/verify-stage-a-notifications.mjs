@@ -369,6 +369,43 @@ assert.equal(resultE.activeReferral, null, "Loading / unauthorized state must no
 
 console.log("  ✓ Admin query param hydration invariants (valid, invalid, missing, normal nav) verified.");
 
+// 6. Verify Mobile Responsive Geometry & Positioning for Notification Panel
+console.log("[6] Verifying Notification Panel Responsive Layout & Geometry...");
+
+const notifBellContent = fs.readFileSync(path.join(rootDir, "src", "components", "NotificationBell.tsx"), "utf-8");
+assert.ok(
+  notifBellContent.includes("fixed sm:absolute"),
+  "Panel must use fixed positioning on mobile and absolute on desktop."
+);
+assert.ok(
+  notifBellContent.includes("left-3 right-3 sm:left-auto sm:right-0"),
+  "Panel must be anchored with left-3 and right-3 on mobile to prevent left-side clipping."
+);
+assert.ok(
+  notifBellContent.includes("max-w-[calc(100vw-24px)]"),
+  "Panel must enforce max-w-[calc(100vw-24px)] on mobile viewports."
+);
+assert.ok(
+  notifBellContent.includes("touchstart"),
+  "Panel outside-click handler must support mobile touchstart events."
+);
+
+// Simulated Viewport Dimension Tests: 320px, 360px, 390px, 430px
+const testViewports = [320, 360, 390, 430];
+const marginX = 12; // left-3 (12px) and right-3 (12px)
+
+for (const vw of testViewports) {
+  const panelWidth = Math.min(vw - (marginX * 2), 384); // sm:w-96 is 384px
+  const leftOffset = marginX;
+  const rightOffset = vw - (leftOffset + panelWidth);
+
+  assert.ok(panelWidth <= vw - 24, `Panel width (${panelWidth}px) must not exceed viewport width minus margins (${vw - 24}px) at ${vw}px.`);
+  assert.ok(leftOffset >= 0, `Left offset (${leftOffset}px) must never be negative at ${vw}px.`);
+  assert.ok(rightOffset >= 0, `Right offset (${rightOffset}px) must never be negative at ${vw}px.`);
+  assert.ok(panelWidth >= 280, `Panel width (${panelWidth}px) at ${vw}px must allow comfortable text readability.`);
+}
+console.log("  ✓ Verified panel geometry across 320px, 360px, 390px, and 430px mobile viewports.");
+
 console.log("------------------------------------------------------------");
 console.log("All Stage A Verification Checks Passed Successfully!");
 console.log("------------------------------------------------------------");

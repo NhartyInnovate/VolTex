@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useMemo, useEffect, useCallback, Suspense, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   CONFERENCE_CONFIG,
@@ -32,8 +32,9 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-export default function VolunteerDashboardPage() {
+function VolunteerDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -52,6 +53,7 @@ export default function VolunteerDashboardPage() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedReferralId, setSelectedReferralId] = useState<string | null>(null);
 
   // Form State
   const [formBuyerName, setFormBuyerName] = useState("");
@@ -244,6 +246,36 @@ export default function VolunteerDashboardPage() {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // Safely hydrate query parameters from notification links (/dashboard?tab=referrals&id=<referral-id>)
+  const openedQueryIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (loading || !profile || referrals.length === 0) return;
+
+    const requestedTab = searchParams.get("tab");
+    if (requestedTab && ["referrals", "leaderboard", "templates"].includes(requestedTab)) {
+      setActiveTab(requestedTab as "referrals" | "leaderboard" | "templates");
+    }
+
+    const requestedReferralId = searchParams.get("id") || searchParams.get("referral");
+    if (requestedReferralId) {
+      if (openedQueryIdRef.current === requestedReferralId) return;
+
+      const target = referrals.find((r) => r.id === requestedReferralId);
+      if (target) {
+        openedQueryIdRef.current = requestedReferralId;
+        setActiveTab("referrals");
+        // Ensure status filter does not hide the targeted referral
+        if (statusFilter !== "all" && target.status !== statusFilter) {
+          setStatusFilter("all");
+        }
+        setSelectedReferralId(target.id);
+      }
+    } else {
+      openedQueryIdRef.current = null;
+    }
+  }, [loading, profile, referrals, searchParams, statusFilter]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -691,7 +723,15 @@ export default function VolunteerDashboardPage() {
                     </tr>
                   ) : (
                     filteredReferrals.map((r) => (
-                      <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
+                      <tr
+                        key={r.id}
+                        id={`referral-${r.id}`}
+                        className={`transition-colors ${
+                          selectedReferralId === r.id
+                            ? "bg-tedx-red/10 dark:bg-tedx-red/15 ring-1 ring-tedx-red"
+                            : "hover:bg-zinc-50 dark:hover:bg-zinc-800/20"
+                        }`}
+                      >
                         <td className="py-3 px-4 font-medium text-zinc-900 dark:text-zinc-200">
                           {r.buyerName}
                         </td>
@@ -771,7 +811,15 @@ export default function VolunteerDashboardPage() {
                 </div>
               ) : (
                 filteredReferrals.map((r) => (
-                  <div key={r.id} className="p-4 space-y-2.5 text-xs">
+                  <div
+                    key={r.id}
+                    id={`referral-card-${r.id}`}
+                    className={`p-4 space-y-2.5 text-xs transition-colors rounded ${
+                      selectedReferralId === r.id
+                        ? "bg-tedx-red/10 dark:bg-tedx-red/15 ring-1 ring-tedx-red"
+                        : ""
+                    }`}
+                  >
                     {/* Header: Buyer Name & Status */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm break-words">
@@ -1119,5 +1167,20 @@ export default function VolunteerDashboardPage() {
         onStepChange={handleTourStepChange}
       />
     </div>
+  );
+}
+
+export default function VolunteerDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <FullPageLoader
+          message="Loading volunteer dashboard..."
+          label="Loading volunteer dashboard"
+        />
+      }
+    >
+      <VolunteerDashboardContent />
+    </Suspense>
   );
 }

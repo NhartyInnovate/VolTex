@@ -530,6 +530,24 @@ function AdminDashboardContent() {
       );
       handleCloseReviewModal();
       setTimeout(() => setActionSuccess(null), 4000);
+
+      // Non-blocking asynchronous dispatch: notify the volunteer in-app about the decision
+      fetch("/api/notifications/notify-volunteer-decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referralId }),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            console.warn(
+              `Volunteer notification dispatch returned non-2xx status: ${res.status}`
+            );
+          }
+        })
+        .catch((err) => {
+          // Log warning safely without blocking or rolling back the committed admin status update
+          console.warn("Non-blocking volunteer notification fetch error:", err);
+        });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update referral status.";
       setActionError(msg);

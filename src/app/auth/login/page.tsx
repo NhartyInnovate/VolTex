@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthErrorMessage } from "@/lib/utils";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { LoadingSpinner, FullPageLoader, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
 
@@ -59,14 +60,15 @@ function LoginForm() {
       });
 
       if (error) {
-        // Handle common email confirmation or invalid credential errors
-        if (error.message.toLowerCase().includes("email not confirmed")) {
-          setErrorMessage(
-            "Your email address has not been verified yet. Please check your inbox for the verification link."
-          );
-        } else {
-          setErrorMessage(error.message);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[VolTex Signin Debug] Supabase Auth error details:", {
+            code: error.code,
+            status: error.status,
+            name: error.name,
+            message: error.message,
+          });
         }
+        setErrorMessage(getAuthErrorMessage(error));
         setIsSubmitting(false);
         return;
       }

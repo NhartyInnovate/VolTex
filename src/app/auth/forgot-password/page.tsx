@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { getAppUrl } from "@/lib/utils";
+import { getAppUrl, getAuthErrorMessage } from "@/lib/utils";
 import { LoadingSpinner, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
 
 export default function ForgotPasswordPage() {
@@ -35,7 +35,15 @@ export default function ForgotPasswordPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[VolTex Password Reset Debug] Supabase Auth error details:", {
+            code: error.code,
+            status: error.status,
+            name: error.name,
+            message: error.message,
+          });
+        }
+        setErrorMessage(getAuthErrorMessage(error));
         setIsSubmitting(false);
         return;
       }
@@ -43,8 +51,10 @@ export default function ForgotPasswordPage() {
       setIsSubmitting(false);
       setSubmitted(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to send password recovery instructions.";
-      setErrorMessage(msg);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[VolTex Password Reset Debug] Unexpected exception:", err);
+      }
+      setErrorMessage(getAuthErrorMessage(err));
       setIsSubmitting(false);
     }
   };

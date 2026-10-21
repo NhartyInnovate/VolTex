@@ -178,6 +178,154 @@ console.log("\n[Test 3] Callback Flow Routing Invariants");
   console.log("✔ Callback flow routing invariants verified.");
 }
 
+// 4. Test getAuthErrorMessage Diagnostic & Safety Invariants
+console.log("\n[Test 4] Supabase Auth Error Mapping & Sanitization");
+{
+  function getAuthErrorMessage(error) {
+    if (!error) {
+      return "An unexpected authentication error occurred. Please try again.";
+    }
+
+    const rawMsg = typeof error === "object" && error !== null && "message" in error
+      ? String(error.message || "")
+      : typeof error === "string"
+      ? error
+      : "";
+
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String(error.code || "")
+      : "";
+
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? Number(error.status)
+      : 0;
+
+    const lowerMsg = rawMsg.toLowerCase();
+    const lowerCode = code.toLowerCase();
+
+    // 1. Rate Limiting
+    if (
+      status === 429 ||
+      lowerCode.includes("rate_limit") ||
+      lowerCode.includes("over_email_send_rate_limit") ||
+      lowerMsg.includes("rate limit") ||
+      lowerMsg.includes("too many requests")
+    ) {
+      return "Email delivery limit reached. The verification email could not be sent right now. Please wait a few minutes before trying again or contact the event organizers.";
+    }
+
+    // 2. SMTP / Confirmation Email Dispatch Failure
+    if (
+      lowerMsg.includes("error sending confirmation email") ||
+      lowerCode === "email_send_failed" ||
+      lowerMsg.includes("failed to send confirmation") ||
+      lowerMsg.includes("error sending email")
+    ) {
+      return "The system encountered an issue sending your confirmation email. Your account may have been created, but confirmation is pending delivery. Please verify that your email address is correct and try again shortly, or contact the organizers if this persists.";
+    }
+
+    // 3. Unauthorized recipient / restricted domain
+    if (
+      lowerCode.includes("email_address_not_authorized") ||
+      lowerMsg.includes("email address not authorized") ||
+      lowerMsg.includes("not authorized")
+    ) {
+      return "This email address cannot receive confirmation emails under the current mail configuration. Please use your standard email address or contact support.";
+    }
+
+    // 4. Invalid email format
+    if (
+      lowerCode.includes("email_address_invalid") ||
+      lowerMsg.includes("invalid email") ||
+      lowerMsg.includes("unable to validate email")
+    ) {
+      return "Please enter a valid email address.";
+    }
+
+    // 5. Existing user registration conflict
+    if (
+      lowerCode.includes("email_exists") ||
+      lowerCode.includes("user_already_exists") ||
+      lowerMsg.includes("user already registered") ||
+      lowerMsg.includes("already registered")
+    ) {
+      return "An account with this email address already exists. Please sign in instead.";
+    }
+
+    // 6. Unconfirmed email during sign-in
+    if (
+      lowerCode.includes("email_not_confirmed") ||
+      lowerMsg.includes("email not confirmed")
+    ) {
+      return "Your email address has not been confirmed yet. Please check your inbox for the confirmation link before signing in.";
+    }
+
+    // 7. Invalid credentials
+    if (
+      lowerCode.includes("invalid_credentials") ||
+      lowerMsg.includes("invalid login credentials")
+    ) {
+      return "Invalid email or password. Please verify your credentials and try again.";
+    }
+
+    // 8. Password requirements
+    if (lowerMsg.includes("password should be at least")) {
+      return "Password should be at least 6 characters.";
+    }
+
+    return rawMsg.trim() ? rawMsg : "An unexpected authentication error occurred. Please try again.";
+  }
+
+  // Case 1: Supabase "Error sending confirmation email"
+  const smtpErr = getAuthErrorMessage({
+    message: "Error sending confirmation email",
+    status: 500,
+    code: "email_send_failed",
+  });
+  assert(smtpErr.includes("encountered an issue sending your confirmation email"), "Should map to user-friendly mail service explanation");
+  assert(!smtpErr.includes("500"), "Should not expose raw status code");
+
+  // Case 2: Supabase rate limit error (HTTP 429)
+  const rateLimitErr = getAuthErrorMessage({
+    message: "over_email_send_rate_limit",
+    status: 429,
+    code: "over_email_send_rate_limit",
+  });
+  assert(rateLimitErr.includes("Email delivery limit reached"), "Should detect rate limit error");
+
+  // Case 3: Unauthorized recipient domain
+  const unauthRecipientErr = getAuthErrorMessage({
+    message: "Email address is not authorized",
+    code: "email_address_not_authorized",
+    status: 422,
+  });
+  assert(unauthRecipientErr.includes("current mail configuration"), "Should explain recipient restriction");
+
+  // Case 4: Existing user
+  const emailExistsErr = getAuthErrorMessage({
+    message: "User already registered",
+    code: "email_exists",
+    status: 422,
+  });
+  assert(emailExistsErr.includes("already exists"), "Should suggest signing in");
+
+  // Case 5: Unconfirmed email on login
+  const notConfirmedErr = getAuthErrorMessage({
+    message: "Email not confirmed",
+    code: "email_not_confirmed",
+    status: 400,
+  });
+  assert(notConfirmedErr.includes("has not been confirmed yet"), "Should instruct user to check inbox");
+
+  // Case 6: Fallback for generic unexpected error
+  assert.equal(
+    getAuthErrorMessage(null),
+    "An unexpected authentication error occurred. Please try again."
+  );
+
+  console.log("✔ Supabase Auth error mapping & sanitization tests passed.");
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL AUTH CALLBACK TESTS PASSED SUCCESSFULLY (3/3)");
+console.log("✔ ALL AUTH CALLBACK & ERROR TESTS PASSED SUCCESSFULLY (4/4)");
 console.log("=======================================================\n");

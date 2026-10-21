@@ -5,7 +5,7 @@ import Link from "next/link";
 import { VOLUNTEER_TEAMS } from "@/config/constants";
 import { triggerConfetti } from "@/lib/confetti";
 import { createClient } from "@/lib/supabase/client";
-import { getAppUrl } from "@/lib/utils";
+import { getAppUrl, getAuthErrorMessage } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
 import { LoadingSpinner, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
 
@@ -81,7 +81,15 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[VolTex Signup Debug] Supabase Auth error details:", {
+            code: error.code,
+            status: error.status,
+            name: error.name,
+            message: error.message,
+          });
+        }
+        setErrorMessage(getAuthErrorMessage(error));
         setIsSubmitting(false);
         return;
       }
@@ -96,8 +104,10 @@ export default function RegisterPage() {
       // Trigger celebration upon successful registration
       triggerConfetti({ type: "registration" });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An unexpected registration error occurred.";
-      setErrorMessage(msg);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[VolTex Signup Debug] Unexpected exception:", err);
+      }
+      setErrorMessage(getAuthErrorMessage(err));
       setIsSubmitting(false);
     }
   };

@@ -42,6 +42,7 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorMessage(null);
 
     const trimmedEmail = email.trim();
@@ -199,6 +200,7 @@ function LoginForm() {
             <CenteredProcessingOverlay
               message="Signing in..."
               label="Signing in to your account"
+              hasBackdrop={false}
             />
           )}
 

@@ -164,18 +164,24 @@ export function FullPageLoader({
 interface CenteredProcessingOverlayProps {
   message?: string;
   label?: string;
+  hasBackdrop?: boolean;
+  className?: string;
 }
 
 export function CenteredProcessingOverlay({
   message = "Processing...",
   label = "Processing request",
+  hasBackdrop = true,
+  className = "",
 }: CenteredProcessingOverlayProps) {
   return (
     <div
       role="status"
       aria-label={label}
       aria-live="polite"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/40 backdrop-blur-[1px] transition-colors duration-200 animate-subtle-fade-up select-none"
+      className={`fixed inset-0 z-50 flex items-center justify-center transition-colors duration-200 animate-subtle-fade-up select-none ${
+        hasBackdrop ? "bg-black/10 dark:bg-black/40 backdrop-blur-[1px]" : ""
+      } ${className}`.trim()}
     >
       <div className="bg-white dark:bg-[#111114] border border-zinc-200/90 dark:border-zinc-800 rounded-xl px-7 py-6 sm:px-8 sm:py-7 shadow-xl dark:shadow-2xl flex flex-col items-center justify-center gap-3.5 text-center max-w-[280px] sm:max-w-xs mx-4">
         <LoadingSpinner

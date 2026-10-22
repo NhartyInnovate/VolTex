@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerUserClient } from "@/lib/supabase/server";
+import { sendAdminNewReferralNotification } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,8 @@ export const dynamic = "force-dynamic";
  * Body: { referralId: string }
  *
  * Calls the secure database fanout function to create in-app notifications
- * for all administrators when a referral is submitted.
+ * for all administrators when a referral is submitted, and asynchronously
+ * dispatches an administrative email alert via Resend.
  *
  * Non-blocking guarantee:
  * Even if this endpoint encounters an error, the referral submission itself
@@ -52,9 +54,64 @@ export async function POST(request: Request) {
       );
     }
 
+    // Inspect RPC return value for domain-level failure (e.g. referral not found)
+    if (
+      rpcResult &&
+      typeof rpcResult === "object" &&
+      "success" in rpcResult &&
+      rpcResult.success === false
+    ) {
+      const safeMessage =
+        typeof rpcResult.message === "string" && rpcResult.message.trim().length > 0
+          ? rpcResult.message
+          : "Unable to create admin notification for the requested referral.";
+
+      return NextResponse.json(
+        { error: safeMessage, result: rpcResult },
+        { status: 422 }
+      );
+    }
+
+    // Non-blocking email dispatch: retrieve referral & owning volunteer details
+    let emailDispatched = false;
+    try {
+      const { data: referral } = await supabase
+        .from("referrals")
+        .select(
+          "id, volunteer_id, buyer_name, ticket_type, ticket_quantity, order_reference, buyer_identifier, created_at"
+        )
+        .eq("id", referralId)
+        .maybeSingle();
+
+      if (referral && referral.volunteer_id) {
+        const { data: volunteerProfile } = await supabase
+          .from("profiles")
+          .select("full_name, volunteer_team")
+          .eq("id", referral.volunteer_id)
+          .maybeSingle();
+
+        const emailResult = await sendAdminNewReferralNotification({
+          volunteerName: volunteerProfile?.full_name || "A volunteer",
+          volunteerTeam: volunteerProfile?.volunteer_team || "Volunteer Team",
+          ticketType: referral.ticket_type,
+          ticketQuantity: referral.ticket_quantity,
+          orderReference: referral.order_reference || referral.buyer_identifier,
+          buyerName: referral.buyer_name,
+          referralId: referral.id,
+          submittedAt: referral.created_at,
+        });
+        emailDispatched = Boolean(emailResult.success && !emailResult.skipped);
+      }
+    } catch (emailErr: unknown) {
+      // Non-blocking: log sanitized error message without failing response
+      const errMsg = emailErr instanceof Error ? emailErr.message : "Unknown error";
+      console.warn(`[VolTex Email] Non-blocking admin email dispatch error: ${errMsg}`);
+    }
+
     return NextResponse.json({
       success: true,
       result: rpcResult,
+      emailDispatched,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error.";

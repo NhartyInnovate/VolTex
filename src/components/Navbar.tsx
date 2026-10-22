@@ -5,10 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Menu, X, LogOut, ChevronDown, User } from "lucide-react";
+import { Menu, X, LogOut, ChevronDown, User, Smartphone } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationBell } from "./NotificationBell";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { usePwaInstall } from "@/hooks/usePwaInstall";
+import { PwaInstallModal } from "./PwaInstallModal";
 
 interface AuthUserSession {
   id: string;
@@ -29,6 +31,15 @@ export function Navbar() {
   const [currentUser, setCurrentUser] = useState<AuthUserSession | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const {
+    canInstall,
+    isInstalled,
+    promptInstall,
+    openIOSInstructions,
+    closeIOSInstructions,
+    showIOSModal,
+  } = usePwaInstall();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -317,6 +328,20 @@ export function Navbar() {
                       </Link>
                     )}
 
+                    {canInstall && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setUserDropdownOpen(false);
+                          await promptInstall();
+                        }}
+                        className="w-full text-left flex items-center gap-2 px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
+                      >
+                        <Smartphone className="w-3.5 h-3.5 text-tedx-red" />
+                        <span>Install App</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={handleSignOut}
                       disabled={isSigningOut}
@@ -454,6 +479,20 @@ export function Navbar() {
                 <span>Profile Details</span>
               </button>
 
+              {canInstall && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setMobileMenuOpen(false);
+                    await promptInstall();
+                  }}
+                  className="w-full text-left flex items-center gap-2 py-1.5 text-xs text-zinc-300 hover:text-white transition-colors font-medium"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-tedx-red" />
+                  <span>Install App</span>
+                </button>
+              )}
+
               <div className="pt-3 border-t border-zinc-800/80">
                 <button
                   onClick={handleSignOut}
@@ -545,6 +584,9 @@ export function Navbar() {
           </div>
         </div>
       )}
+
+      {/* iOS Safari Add to Home Screen Instructions Modal */}
+      <PwaInstallModal isOpen={showIOSModal} onClose={closeIOSInstructions} />
     </header>
   );
 }

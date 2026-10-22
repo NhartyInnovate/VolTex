@@ -1,9 +1,21 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+  ],
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: "TEDxGwarinpa | Volunteer Ticket Sales Challenge",
@@ -17,6 +29,25 @@ export const metadata: Metadata = {
     "Ticket Sales",
     "Leaderboard",
   ],
+  applicationName: "VolTex",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VolTex",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    apple: [
+      {
+        url: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -35,6 +66,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col antialiased selection:bg-tedx-red selection:text-white transition-colors duration-200">
         <ThemeProvider>
+          <ServiceWorkerRegister />
           <Navbar />
           <main className="flex-1 flex flex-col">
             <PageTransition>{children}</PageTransition>

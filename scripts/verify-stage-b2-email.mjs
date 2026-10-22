@@ -50,6 +50,7 @@ const {
   sanitizeSubject,
   isValidEmailAddress,
   parseAndValidateEmailList,
+  isLocalhostOrLoopback,
   getCleanAppUrl,
   formatSubmittedAt,
   sanitizeApprovalNote,
@@ -118,32 +119,85 @@ assert.deepEqual(
   "parseAndValidateEmailList must split by comma/semicolon, filter invalid addresses, and deduplicate case-insensitively."
 );
 
-// 1e. URL validation & fallback
-assert.equal(
-  getCleanAppUrl("https://voltex.nkaylabs.com///"),
-  "https://voltex.nkaylabs.com",
-  "Must strip trailing slashes from valid https URL."
-);
-assert.equal(
-  getCleanAppUrl("http://localhost:3000/"),
-  "http://localhost:3000",
-  "Must allow http://localhost URLs."
-);
-assert.equal(
-  getCleanAppUrl("javascript:alert(1)"),
-  "https://voltex.nkaylabs.com",
-  "Must reject non-http(s) protocols and fall back to https://voltex.nkaylabs.com."
-);
-assert.equal(
-  getCleanAppUrl("not a valid url"),
-  "https://voltex.nkaylabs.com",
-  "Must fall back to https://voltex.nkaylabs.com when URL is malformed."
-);
-assert.equal(
-  getCleanAppUrl(""),
-  "https://voltex.nkaylabs.com",
-  "Must fall back to https://voltex.nkaylabs.com when URL is empty."
-);
+// 1e. URL validation, localhost/loopback rejection & fallback
+assert.equal(isLocalhostOrLoopback("localhost"), true);
+assert.equal(isLocalhostOrLoopback("LOCALHOST"), true);
+assert.equal(isLocalhostOrLoopback("portal.localhost"), true);
+assert.equal(isLocalhostOrLoopback("dev.portal.localhost"), true);
+assert.equal(isLocalhostOrLoopback("127.0.0.1"), true);
+assert.equal(isLocalhostOrLoopback("127.0.1.1"), true);
+assert.equal(isLocalhostOrLoopback("0.0.0.0"), true);
+assert.equal(isLocalhostOrLoopback("[::1]"), true);
+assert.equal(isLocalhostOrLoopback("::1"), true);
+assert.equal(isLocalhostOrLoopback("voltex.nkaylabs.com"), false);
+assert.equal(isLocalhostOrLoopback("staging.voltex.nkaylabs.com"), false);
+
+const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+try {
+  process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+
+  assert.equal(
+    getCleanAppUrl("https://voltex.nkaylabs.com///"),
+    "https://voltex.nkaylabs.com",
+    "Must strip trailing slashes from valid https URL."
+  );
+  assert.equal(
+    getCleanAppUrl("https://staging.voltex.nkaylabs.com/portal///"),
+    "https://staging.voltex.nkaylabs.com/portal",
+    "Must preserve valid non-localhost custom/staging URLs and clean trailing path slashes."
+  );
+  assert.equal(
+    getCleanAppUrl("http://localhost:3000/"),
+    "https://voltex.nkaylabs.com",
+    "Must reject localhost URLs and fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl("https://sub.localhost:3000/"),
+    "https://voltex.nkaylabs.com",
+    "Must reject .localhost subdomain URLs and fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl("http://127.0.0.1:3000/"),
+    "https://voltex.nkaylabs.com",
+    "Must reject 127.0.0.1 loopback URLs and fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl("http://0.0.0.0:3000/"),
+    "https://voltex.nkaylabs.com",
+    "Must reject 0.0.0.0 URLs and fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl("http://[::1]:3000/"),
+    "https://voltex.nkaylabs.com",
+    "Must reject IPv6 [::1] loopback URLs and fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl(),
+    "https://voltex.nkaylabs.com",
+    "When NEXT_PUBLIC_APP_URL is http://localhost:3000, getCleanAppUrl() must fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl("javascript:alert(1)"),
+    "https://voltex.nkaylabs.com",
+    "Must reject non-http(s) protocols and fall back to https://voltex.nkaylabs.com."
+  );
+  assert.equal(
+    getCleanAppUrl("not a valid url"),
+    "https://voltex.nkaylabs.com",
+    "Must fall back to https://voltex.nkaylabs.com when URL is malformed."
+  );
+  assert.equal(
+    getCleanAppUrl(""),
+    "https://voltex.nkaylabs.com",
+    "Must fall back to https://voltex.nkaylabs.com when URL is empty."
+  );
+} finally {
+  if (originalNextPublicAppUrl !== undefined) {
+    process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl;
+  } else {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+  }
+}
 
 console.log("  ✓ Server-only guard, HTML escaping, subject sanitization, recipient filtering, and URL validation passed.");
 
@@ -296,6 +350,112 @@ assert.match(
   /Record does not match Meeteor Hub attendee list/,
   "HTML must provide safe fallback reason when note is default approval boilerplate."
 );
+
+// 3e. Regression: All 3 templates must use https://voltex.nkaylabs.com and contain ZERO localhost links
+// even when NEXT_PUBLIC_APP_URL or props.appUrl is set to localhost / loopback
+{
+  const savedEnvUrl = process.env.NEXT_PUBLIC_APP_URL;
+  try {
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+
+    const adminWithLocalEnv = renderAdminNewReferralEmail({
+      volunteerName: "Test Volunteer",
+      volunteerTeam: "Marketing",
+      ticketType: "Standard",
+      ticketQuantity: 1,
+      orderReference: "ORD-101",
+      buyerName: "Test Buyer",
+      referralId: "e5555555-6666-7777-8888-999999999999",
+      appUrl: "http://localhost:3000",
+    });
+
+    const approvedWithLocalEnv = renderVolunteerApprovedEmail({
+      volunteerName: "Test Volunteer",
+      to: "volunteer@example.com",
+      ticketType: "Standard",
+      ticketQuantity: 1,
+      orderReference: "ORD-101",
+      pointsEarned: 5,
+      cumulativePoints: 15,
+      rank: 2,
+      referralId: "e5555555-6666-7777-8888-999999999999",
+    });
+
+    const rejectedWithLocalEnv = renderVolunteerRejectedEmail({
+      volunteerName: "Test Volunteer",
+      to: "volunteer@example.com",
+      ticketType: "Standard",
+      ticketQuantity: 1,
+      orderReference: "ORD-101",
+      rejectionReason: "Invalid order reference",
+      referralId: "e5555555-6666-7777-8888-999999999999",
+      appUrl: "http://127.0.0.1:3000",
+    });
+
+    // Verify Admin email HTML (CTA + footer) and plain text
+    assert.match(
+      adminWithLocalEnv.html,
+      /href="https:\/\/voltex\.nkaylabs\.com\/admin\?tab=referrals&amp;id=e5555555-6666-7777-8888-999999999999"/,
+      "Admin HTML CTA link must point to https://voltex.nkaylabs.com."
+    );
+    assert.match(
+      adminWithLocalEnv.html,
+      /href="https:\/\/voltex\.nkaylabs\.com"[^>]*>VolTex Portal<\/a>/,
+      "Admin HTML footer link must point to https://voltex.nkaylabs.com."
+    );
+    assert.match(
+      adminWithLocalEnv.text,
+      /https:\/\/voltex\.nkaylabs\.com\/admin\?tab=referrals&id=e5555555-6666-7777-8888-999999999999/,
+      "Admin plain-text link must point to https://voltex.nkaylabs.com."
+    );
+    assert.doesNotMatch(adminWithLocalEnv.html, /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i);
+    assert.doesNotMatch(adminWithLocalEnv.text, /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i);
+
+    // Verify Approved email HTML (CTA + footer) and plain text
+    assert.match(
+      approvedWithLocalEnv.html,
+      /href="https:\/\/voltex\.nkaylabs\.com\/dashboard\?tab=referrals&amp;id=e5555555-6666-7777-8888-999999999999"/,
+      "Approved HTML CTA link must point to https://voltex.nkaylabs.com."
+    );
+    assert.match(
+      approvedWithLocalEnv.html,
+      /href="https:\/\/voltex\.nkaylabs\.com"[^>]*>VolTex Portal<\/a>/,
+      "Approved HTML footer link must point to https://voltex.nkaylabs.com."
+    );
+    assert.match(
+      approvedWithLocalEnv.text,
+      /https:\/\/voltex\.nkaylabs\.com\/dashboard\?tab=referrals&id=e5555555-6666-7777-8888-999999999999/,
+      "Approved plain-text link must point to https://voltex.nkaylabs.com."
+    );
+    assert.doesNotMatch(approvedWithLocalEnv.html, /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i);
+    assert.doesNotMatch(approvedWithLocalEnv.text, /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i);
+
+    // Verify Rejected email HTML (CTA + footer) and plain text
+    assert.match(
+      rejectedWithLocalEnv.html,
+      /href="https:\/\/voltex\.nkaylabs\.com\/dashboard\?tab=referrals&amp;id=e5555555-6666-7777-8888-999999999999"/,
+      "Rejected HTML CTA link must point to https://voltex.nkaylabs.com."
+    );
+    assert.match(
+      rejectedWithLocalEnv.html,
+      /href="https:\/\/voltex\.nkaylabs\.com"[^>]*>VolTex Portal<\/a>/,
+      "Rejected HTML footer link must point to https://voltex.nkaylabs.com."
+    );
+    assert.match(
+      rejectedWithLocalEnv.text,
+      /https:\/\/voltex\.nkaylabs\.com\/dashboard\?tab=referrals&id=e5555555-6666-7777-8888-999999999999/,
+      "Rejected plain-text link must point to https://voltex.nkaylabs.com."
+    );
+    assert.doesNotMatch(rejectedWithLocalEnv.html, /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i);
+    assert.doesNotMatch(rejectedWithLocalEnv.text, /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]/i);
+  } finally {
+    if (savedEnvUrl !== undefined) {
+      process.env.NEXT_PUBLIC_APP_URL = savedEnvUrl;
+    } else {
+      delete process.env.NEXT_PUBLIC_APP_URL;
+    }
+  }
+}
 
 console.log("  ✓ All 3 email templates render branded, mobile-responsive HTML and plain text with correct variables.");
 

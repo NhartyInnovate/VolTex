@@ -151,8 +151,27 @@ export function parseAndValidateEmailList(input: string | string[] | undefined |
 }
 
 /**
- * Validates and normalizes the base application URL.
- * Enforces http:// or https:// protocol and falls back safely to https://voltex.nkaylabs.com.
+ * Checks whether a hostname is a localhost or loopback address (`localhost`, `*.localhost`,
+ * `127.0.0.1` / `127.x.x.x`, `0.0.0.0`, or IPv6 loopback `[::1]` / `::1`).
+ */
+export function isLocalhostOrLoopback(hostname: string): boolean {
+  if (!hostname || typeof hostname !== "string") return false;
+  const lower = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "").replace(/\.+$/, "");
+  return (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower === "127.0.0.1" ||
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(lower) ||
+    lower === "0.0.0.0" ||
+    lower === "::1" ||
+    lower === "0:0:0:0:0:0:0:1"
+  );
+}
+
+/**
+ * Validates and normalizes the base application URL for outbound transactional emails.
+ * Enforces http:// or https:// protocol, rejects localhost/loopback hosts, and falls back
+ * safely to https://voltex.nkaylabs.com so delivered email links are always externally reachable.
  */
 export function getCleanAppUrl(override?: string): string {
   const candidates = [override, process.env.NEXT_PUBLIC_APP_URL, DEFAULT_APP_URL];
@@ -165,6 +184,9 @@ export function getCleanAppUrl(override?: string): string {
     try {
       const parsed = new URL(trimmed);
       if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        continue;
+      }
+      if (isLocalhostOrLoopback(parsed.hostname)) {
         continue;
       }
       const cleanPath = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");

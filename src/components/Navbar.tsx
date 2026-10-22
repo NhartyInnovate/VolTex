@@ -36,9 +36,10 @@ export function Navbar() {
     canInstall,
     isInstalled,
     promptInstall,
-    openIOSInstructions,
-    closeIOSInstructions,
-    showIOSModal,
+    openInstallInstructions,
+    closeInstallInstructions,
+    showInstructionsModal,
+    instructionPlatform,
   } = usePwaInstall();
 
   // Close dropdown on outside click
@@ -419,6 +420,19 @@ export function Navbar() {
                 >
                   Sign In
                 </Link>
+                {canInstall && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await promptInstall();
+                    }}
+                    className="w-full text-center flex items-center justify-center gap-2 py-2.5 rounded border border-zinc-800 text-zinc-300 hover:text-white text-xs active:scale-[0.98] transition-all font-medium bg-zinc-900/40"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-tedx-red" />
+                    <span>Install App</span>
+                  </button>
+                )}
               </div>
             </>
           ) : (
@@ -585,8 +599,12 @@ export function Navbar() {
         </div>
       )}
 
-      {/* iOS Safari Add to Home Screen Instructions Modal */}
-      <PwaInstallModal isOpen={showIOSModal} onClose={closeIOSInstructions} />
+      {/* PWA Add to Home Screen Instructions Modal */}
+      <PwaInstallModal
+        isOpen={showInstructionsModal}
+        onClose={closeInstallInstructions}
+        platform={instructionPlatform}
+      />
     </header>
   );
 }

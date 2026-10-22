@@ -2,19 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Share, PlusSquare, Smartphone } from "lucide-react";
+import { X, Share, PlusSquare, Smartphone, MoreVertical } from "lucide-react";
 
 interface PwaInstallModalProps {
   isOpen: boolean;
   onClose: () => void;
+  platform?: "ios" | "android" | null;
 }
 
 /**
  * PwaInstallModal
- * Accessible dialog explaining iOS Safari "Add to Home Screen" instructions.
+ * Accessible dialog explaining manual "Add to Home Screen" instructions for iOS Safari and Android Chrome.
  * Portals directly to document.body and respects mobile viewport constraints.
  */
-export function PwaInstallModal({ isOpen, onClose }: PwaInstallModalProps) {
+export function PwaInstallModal({ isOpen, onClose, platform = "ios" }: PwaInstallModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,8 @@ export function PwaInstallModal({ isOpen, onClose }: PwaInstallModalProps) {
   }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
+
+  const isAndroid = platform === "android";
 
   return createPortal(
     <div
@@ -61,7 +64,9 @@ export function PwaInstallModal({ isOpen, onClose }: PwaInstallModalProps) {
             <h3 id="pwa-install-title" className="text-sm font-bold text-white">
               Install VolTex
             </h3>
-            <p className="text-[11px] text-zinc-400">iOS Safari Home Screen Setup</p>
+            <p className="text-[11px] text-zinc-400">
+              {isAndroid ? "Android Chrome Setup" : "iOS Safari Setup"}
+            </p>
           </div>
         </div>
 
@@ -70,37 +75,69 @@ export function PwaInstallModal({ isOpen, onClose }: PwaInstallModalProps) {
             Add VolTex to your home screen for full-screen access, instant ticket logging, and faster live standings:
           </p>
 
-          <ol className="space-y-2.5 list-none pl-0">
-            <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
-                1
-              </span>
-              <span>
-                Tap the <strong className="text-white font-medium">Share</strong> button{" "}
-                <Share className="w-3.5 h-3.5 inline-block text-tedx-red mx-0.5 align-text-bottom" /> in Safari&apos;s bottom toolbar.
-              </span>
-            </li>
+          {isAndroid ? (
+            <ol className="space-y-2.5 list-none pl-0">
+              <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
+                  1
+                </span>
+                <span>
+                  Tap the <strong className="text-white font-medium">Menu</strong> (three dots){" "}
+                  <MoreVertical className="w-3.5 h-3.5 inline-block text-tedx-red mx-0.5 align-text-bottom" /> in Chrome&apos;s top-right corner.
+                </span>
+              </li>
 
-            <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
-                2
-              </span>
-              <span>
-                Scroll down and tap{" "}
-                <strong className="text-white font-medium">Add to Home Screen</strong>{" "}
-                <PlusSquare className="w-3.5 h-3.5 inline-block text-zinc-400 mx-0.5 align-text-bottom" />.
-              </span>
-            </li>
+              <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
+                  2
+                </span>
+                <span>
+                  Select <strong className="text-white font-medium">Install app</strong> (or <strong className="text-white font-medium">Add to Home screen</strong>).
+                </span>
+              </li>
 
-            <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
-                3
-              </span>
-              <span>
-                Confirm by tapping <strong className="text-white font-medium">Add</strong> in the top-right corner.
-              </span>
-            </li>
-          </ol>
+              <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
+                  3
+                </span>
+                <span>
+                  Tap <strong className="text-white font-medium">Install</strong> in the confirmation popup.
+                </span>
+              </li>
+            </ol>
+          ) : (
+            <ol className="space-y-2.5 list-none pl-0">
+              <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
+                  1
+                </span>
+                <span>
+                  Tap the <strong className="text-white font-medium">Share</strong> button{" "}
+                  <Share className="w-3.5 h-3.5 inline-block text-tedx-red mx-0.5 align-text-bottom" /> in Safari&apos;s bottom toolbar.
+                </span>
+              </li>
+
+              <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
+                  2
+                </span>
+                <span>
+                  Scroll down and tap{" "}
+                  <strong className="text-white font-medium">Add to Home Screen</strong>{" "}
+                  <PlusSquare className="w-3.5 h-3.5 inline-block text-zinc-400 mx-0.5 align-text-bottom" />.
+                </span>
+              </li>
+
+              <li className="flex items-start gap-2.5 bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 font-mono font-bold text-[10px] text-zinc-300 shrink-0 mt-0.5">
+                  3
+                </span>
+                <span>
+                  Confirm by tapping <strong className="text-white font-medium">Add</strong> in the top-right corner.
+                </span>
+              </li>
+            </ol>
+          )}
         </div>
 
         <div className="pt-2">

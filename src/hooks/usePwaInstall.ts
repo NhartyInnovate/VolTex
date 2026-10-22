@@ -11,10 +11,19 @@ export interface PwaInstallState {
   canInstall: boolean;
   isInstalled: boolean;
   isIOS: boolean;
+  isAndroid: boolean;
+  hasPrompt: boolean;
   promptInstall: () => Promise<"accepted" | "dismissed" | "unavailable">;
-  openIOSInstructions: () => void;
-  closeIOSInstructions: () => void;
-  showIOSModal: boolean;
+  openInstallInstructions: () => void;
+  closeInstallInstructions: () => void;
+  showInstructionsModal: boolean;
+  instructionPlatform: "ios" | "android" | null;
+}
+
+declare global {
+  interface Window {
+    __voltex_pwa_prompt?: BeforeInstallPromptEvent | null;
+  }
 }
 
 const STORAGE_DISMISSED_KEY = "voltex_pwa_install_dismissed_v1";
@@ -25,10 +34,16 @@ const STORAGE_DISMISSED_KEY = "voltex_pwa_install_dismissed_v1";
  * Detects standalone display mode, captures beforeinstallprompt, and manages accessible iOS fallback.
  */
 export function usePwaInstall(): PwaInstallState {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (typeof window !== "undefined" && window.__voltex_pwa_prompt) {
+      return window.__voltex_pwa_prompt;
+    }
+    return null;
+  });
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [showIOSModal, setShowIOSModal] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -45,8 +60,9 @@ export function usePwaInstall(): PwaInstallState {
       return;
     }
 
-    // 2. Detect iOS Safari (does not support beforeinstallprompt)
     const userAgent = window.navigator.userAgent || "";
+
+    // 2. Detect iOS Safari
     const isIOSDevice =
       (/iPad|iPhone|iPod/.test(userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) &&
@@ -62,42 +78,60 @@ export function usePwaInstall(): PwaInstallState {
       setIsIOS(true);
     }
 
-    // 3. Capture beforeinstallprompt on Chromium / Android
+    // 3. Detect Android browser
+    const isAndroidDevice = /Android/i.test(userAgent);
+    if (isAndroidDevice) {
+      setIsAndroid(true);
+    }
+
+    // 4. Capture beforeinstallprompt on Chromium / Android
     const handleBeforeInstallPrompt = (e: Event) => {
       // Prevent browser default mini-infobar
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      window.__voltex_pwa_prompt = promptEvent;
+      setDeferredPrompt(promptEvent);
     };
 
-    // 4. Listen to appinstalled event
+    // 5. Listen to appinstalled event
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      window.__voltex_pwa_prompt = null;
       setDeferredPrompt(null);
-      setShowIOSModal(false);
+      setShowInstructionsModal(false);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
+    // If an early script already captured the prompt, pick it up
+    if (window.__voltex_pwa_prompt && !deferredPrompt) {
+      setDeferredPrompt(window.__voltex_pwa_prompt);
+    }
+
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [deferredPrompt]);
 
-  // Trigger standard installation prompt
+  // Trigger installation prompt or show manual fallback instructions
   const promptInstall = useCallback(async (): Promise<"accepted" | "dismissed" | "unavailable"> => {
-    if (!deferredPrompt) {
-      if (isIOS) {
-        setShowIOSModal(true);
+    // Check local deferredPrompt state or window global cache
+    const activePrompt = deferredPrompt || (typeof window !== "undefined" ? window.__voltex_pwa_prompt : null);
+
+    if (!activePrompt) {
+      // If native deferred prompt is not available, show platform instructions modal
+      if (isIOS || isAndroid) {
+        setShowInstructionsModal(true);
         return "unavailable";
       }
       return "unavailable";
     }
 
     try {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
+      await activePrompt.prompt();
+      const choice = await activePrompt.userChoice;
       if (choice.outcome === "accepted") {
         setIsInstalled(true);
       } else {
@@ -107,32 +141,44 @@ export function usePwaInstall(): PwaInstallState {
           // Ignore localStorage errors
         }
       }
+      window.__voltex_pwa_prompt = null;
       setDeferredPrompt(null);
       return choice.outcome;
     } catch {
+      window.__voltex_pwa_prompt = null;
       setDeferredPrompt(null);
       return "unavailable";
     }
-  }, [deferredPrompt, isIOS]);
+  }, [deferredPrompt, isIOS, isAndroid]);
 
-  const openIOSInstructions = useCallback(() => {
-    setShowIOSModal(true);
+  const openInstallInstructions = useCallback(() => {
+    setShowInstructionsModal(true);
   }, []);
 
-  const closeIOSInstructions = useCallback(() => {
-    setShowIOSModal(false);
+  const closeInstallInstructions = useCallback(() => {
+    setShowInstructionsModal(false);
   }, []);
 
-  // Can install if not already installed AND (we have deferred prompt OR on iOS Safari)
-  const canInstall = !isInstalled && (deferredPrompt !== null || isIOS);
+  // Determine which platform instruction to display when modal opens
+  const instructionPlatform: "ios" | "android" | null = isIOS
+    ? "ios"
+    : isAndroid
+    ? "android"
+    : null;
+
+  // Can install if not already installed AND (we have deferred prompt OR on mobile platform iOS/Android)
+  const canInstall = !isInstalled && (deferredPrompt !== null || isIOS || isAndroid);
 
   return {
     canInstall,
     isInstalled,
     isIOS,
+    isAndroid,
+    hasPrompt: deferredPrompt !== null,
     promptInstall,
-    openIOSInstructions,
-    closeIOSInstructions,
-    showIOSModal,
+    openInstallInstructions,
+    closeInstallInstructions,
+    showInstructionsModal,
+    instructionPlatform,
   };
 }

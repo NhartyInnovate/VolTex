@@ -31,8 +31,10 @@ assert.match(hookContent, /appinstalled/, "Hook must listen to appinstalled even
 assert.match(hookContent, /prompt\(\)/, "Hook must invoke prompt() on user action.");
 assert.match(hookContent, /voltex_pwa_install_dismissed/, "Hook must track dismissal state.");
 assert.match(hookContent, /isIOS/, "Hook must detect iOS Safari devices.");
+assert.match(hookContent, /isAndroid/, "Hook must detect Android devices.");
+assert.match(hookContent, /window\.__voltex_pwa_prompt/, "Hook must preserve prompt on global window object.");
 
-console.log("  ✓ usePwaInstall hook implements complete standalone, prompt, and iOS detection.");
+console.log("  ✓ usePwaInstall hook implements complete standalone, prompt, Android, and iOS detection.");
 
 // 2. Verify PwaInstallModal Component
 console.log("[2] Verifying src/components/PwaInstallModal.tsx...");
@@ -49,8 +51,10 @@ assert.match(modalContent, /aria-modal=["']true["']/, "PwaInstallModal must have
 assert.match(modalContent, /Escape/, "PwaInstallModal must support Escape key dismissal.");
 assert.match(modalContent, /Share/, "PwaInstallModal must explain Safari Share button.");
 assert.match(modalContent, /Add to Home Screen/i, "PwaInstallModal must guide user to Add to Home Screen.");
+assert.match(modalContent, /platform === ["']android["']/, "PwaInstallModal must support Android platform instructions.");
+assert.match(modalContent, /MoreVertical/, "PwaInstallModal must show Android 3-dot menu icon.");
 
-console.log("  ✓ PwaInstallModal is fully accessible, portaled, and provides clear iOS guidance.");
+console.log("  ✓ PwaInstallModal is fully accessible, portaled, and provides clear iOS and Android guidance.");
 
 // 3. Verify Navbar Navigation Integration
 console.log("[3] Verifying Install App integration in src/components/Navbar.tsx...");
@@ -65,7 +69,14 @@ assert.match(navbarContent, /Install App/, "Navbar must contain 'Install App' la
 assert.match(navbarContent, /canInstall\s*&&/, "Install button must only render when canInstall is true.");
 assert.match(navbarContent, /promptInstall\(\)/, "Clicking install button must invoke promptInstall().");
 
-console.log("  ✓ Navbar cleanly renders Install App in both desktop dropdown and mobile drawer.");
+// Confirm "Install App" appears in both authenticated and guest sections
+const installOccurrences = (navbarContent.match(/Install App/g) || []).length;
+assert.ok(
+  installOccurrences >= 2,
+  `Navbar must provide 'Install App' across desktop, guest mobile drawer, and auth drawer. Found: ${installOccurrences}`
+);
+
+console.log("  ✓ Navbar cleanly renders Install App in desktop dropdown, mobile drawer (guest & auth).");
 
 // 4. Simulated Hook State Logic Tests
 console.log("[4] Simulating Hook Detection Logic Across Environments...");
@@ -84,8 +95,14 @@ function simulateInstallState({ isStandalone, userAgent, hasBeforeInstallPrompt 
     return { canInstall: true, isInstalled: false, mode: "IOS_SAFARI_MANUAL" };
   }
 
+  const isAndroid = /Android/i.test(userAgent);
+
   if (hasBeforeInstallPrompt) {
     return { canInstall: true, isInstalled: false, mode: "NATIVE_PROMPT_READY" };
+  }
+
+  if (isAndroid) {
+    return { canInstall: true, isInstalled: false, mode: "ANDROID_MANUAL_GUIDE" };
   }
 
   return { canInstall: false, isInstalled: false, mode: "UNSUPPORTED_BROWSER" };
@@ -100,14 +117,23 @@ const stateInstalled = simulateInstallState({
 assert.equal(stateInstalled.canInstall, false);
 assert.equal(stateInstalled.isInstalled, true);
 
-// Case B: Android Chrome with beforeinstallprompt event captured
-const stateAndroid = simulateInstallState({
+// Case B1: Android Chrome with beforeinstallprompt event captured
+const stateAndroidPrompt = simulateInstallState({
   isStandalone: false,
   userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/120.0 Mobile",
   hasBeforeInstallPrompt: true,
 });
-assert.equal(stateAndroid.canInstall, true);
-assert.equal(stateAndroid.mode, "NATIVE_PROMPT_READY");
+assert.equal(stateAndroidPrompt.canInstall, true);
+assert.equal(stateAndroidPrompt.mode, "NATIVE_PROMPT_READY");
+
+// Case B2: Android Chrome without beforeinstallprompt fired yet (manual fallback guide)
+const stateAndroidManual = simulateInstallState({
+  isStandalone: false,
+  userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/120.0 Mobile",
+  hasBeforeInstallPrompt: false,
+});
+assert.equal(stateAndroidManual.canInstall, true);
+assert.equal(stateAndroidManual.mode, "ANDROID_MANUAL_GUIDE");
 
 // Case C: iPhone iOS Safari (no beforeinstallprompt, requires Share -> Add to Home Screen)
 const stateIos = simulateInstallState({

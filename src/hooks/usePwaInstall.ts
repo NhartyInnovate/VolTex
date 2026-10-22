@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-}
+import {
+  type BeforeInstallPromptEvent,
+  type InstallOutcome,
+  PWA_PROMPT_READY_EVENT,
+  launchNativeInstallPrompt,
+  detectInstallPlatform,
+} from "@/lib/pwaInstall";
 
 export interface PwaInstallState {
   canInstall: boolean;
@@ -13,7 +15,7 @@ export interface PwaInstallState {
   isIOS: boolean;
   isAndroid: boolean;
   hasPrompt: boolean;
-  promptInstall: () => Promise<"accepted" | "dismissed" | "unavailable">;
+  promptInstall: () => Promise<InstallOutcome>;
   openInstallInstructions: () => void;
   closeInstallInstructions: () => void;
   showInstructionsModal: boolean;
@@ -22,6 +24,7 @@ export interface PwaInstallState {
 
 declare global {
   interface Window {
+    /** Set by the early capture script in RootLayout; the single source of truth for the native prompt. */
     __voltex_pwa_prompt?: BeforeInstallPromptEvent | null;
   }
 }
@@ -31,15 +34,12 @@ const STORAGE_DISMISSED_KEY = "voltex_pwa_install_dismissed_v1";
 /**
  * usePwaInstall
  * Reusable client-side hook for managing PWA installation across Chrome/Edge/Android and iOS Safari.
- * Detects standalone display mode, captures beforeinstallprompt, and manages accessible iOS fallback.
+ * Detects standalone display mode, reads the beforeinstallprompt event captured by the early
+ * <head> script, and manages accessible iOS / Android manual fallback instructions.
  */
 export function usePwaInstall(): PwaInstallState {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
-    if (typeof window !== "undefined" && window.__voltex_pwa_prompt) {
-      return window.__voltex_pwa_prompt;
-    }
-    return null;
-  });
+  // Always start as null so server and client initial renders match (no hydration mismatch).
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
@@ -60,96 +60,74 @@ export function usePwaInstall(): PwaInstallState {
       return;
     }
 
-    const userAgent = window.navigator.userAgent || "";
+    // 2. Detect iOS Safari / Android
+    const platform = detectInstallPlatform(
+      window.navigator.userAgent || "",
+      navigator.platform || "",
+      navigator.maxTouchPoints || 0
+    );
+    setIsIOS(platform.isIOS);
+    setIsAndroid(platform.isAndroid);
 
-    // 2. Detect iOS Safari
-    const isIOSDevice =
-      (/iPad|iPhone|iPod/.test(userAgent) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) &&
-      // @ts-expect-error - MSStream check
-      !window.MSStream;
+    // 3. Pick up a prompt captured before hydration, then follow future captures.
+    //    The early script owns the only beforeinstallprompt listener; we only
+    //    subscribe to its notification event, so no duplicate listeners exist.
+    const syncPrompt = () => setDeferredPrompt(window.__voltex_pwa_prompt ?? null);
+    syncPrompt();
 
-    const isSafari =
-      /Safari/.test(userAgent) &&
-      !/CriOS|FxiOS|OPiOS|mercury|EdgiOS/.test(userAgent) &&
-      !/Chrome|Android/.test(userAgent);
-
-    if (isIOSDevice && isSafari) {
-      setIsIOS(true);
-    }
-
-    // 3. Detect Android browser
-    const isAndroidDevice = /Android/i.test(userAgent);
-    if (isAndroidDevice) {
-      setIsAndroid(true);
-    }
-
-    // 4. Capture beforeinstallprompt on Chromium / Android
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent browser default mini-infobar
-      e.preventDefault();
-      const promptEvent = e as BeforeInstallPromptEvent;
-      window.__voltex_pwa_prompt = promptEvent;
-      setDeferredPrompt(promptEvent);
-    };
-
-    // 5. Listen to appinstalled event
     const handleAppInstalled = () => {
-      setIsInstalled(true);
       window.__voltex_pwa_prompt = null;
       setDeferredPrompt(null);
+      setIsInstalled(true);
       setShowInstructionsModal(false);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener(PWA_PROMPT_READY_EVENT, syncPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
-    // If an early script already captured the prompt, pick it up
-    if (window.__voltex_pwa_prompt && !deferredPrompt) {
-      setDeferredPrompt(window.__voltex_pwa_prompt);
-    }
-
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener(PWA_PROMPT_READY_EVENT, syncPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, [deferredPrompt]);
+  }, []);
 
-  // Trigger installation prompt or show manual fallback instructions
-  const promptInstall = useCallback(async (): Promise<"accepted" | "dismissed" | "unavailable"> => {
-    // Check local deferredPrompt state or window global cache
-    const activePrompt = deferredPrompt || (typeof window !== "undefined" ? window.__voltex_pwa_prompt : null);
+  /**
+   * Must be called directly from a click/tap handler.
+   * - Native prompt available: opens Chrome's install dialog immediately (no modal first).
+   * - Native prompt unavailable: opens manual platform instructions on iOS / Android.
+   */
+  const promptInstall = useCallback((): Promise<InstallOutcome> => {
+    // Read the live global synchronously so we never use a stale or already-consumed event.
+    const nativePrompt = window.__voltex_pwa_prompt ?? null;
 
-    if (!activePrompt) {
-      // If native deferred prompt is not available, show platform instructions modal
+    if (!nativePrompt) {
       if (isIOS || isAndroid) {
         setShowInstructionsModal(true);
-        return "unavailable";
       }
-      return "unavailable";
+      return Promise.resolve("unavailable");
     }
 
-    try {
-      await activePrompt.prompt();
-      const choice = await activePrompt.userChoice;
-      if (choice.outcome === "accepted") {
+    // A BeforeInstallPromptEvent can only be prompted once: discard it before launching.
+    window.__voltex_pwa_prompt = null;
+    setDeferredPrompt(null);
+
+    // prompt() is invoked synchronously inside launchNativeInstallPrompt, within the user gesture.
+    return launchNativeInstallPrompt(nativePrompt).then((outcome) => {
+      if (outcome === "accepted") {
         setIsInstalled(true);
-      } else {
+      } else if (outcome === "dismissed") {
         try {
           localStorage.setItem(STORAGE_DISMISSED_KEY, Date.now().toString());
         } catch {
           // Ignore localStorage errors
         }
+      } else if (isIOS || isAndroid) {
+        // The native dialog could not be launched; fall back to manual guidance.
+        setShowInstructionsModal(true);
       }
-      window.__voltex_pwa_prompt = null;
-      setDeferredPrompt(null);
-      return choice.outcome;
-    } catch {
-      window.__voltex_pwa_prompt = null;
-      setDeferredPrompt(null);
-      return "unavailable";
-    }
-  }, [deferredPrompt, isIOS, isAndroid]);
+      return outcome;
+    });
+  }, [isIOS, isAndroid]);
 
   const openInstallInstructions = useCallback(() => {
     setShowInstructionsModal(true);
@@ -166,7 +144,7 @@ export function usePwaInstall(): PwaInstallState {
     ? "android"
     : null;
 
-  // Can install if not already installed AND (we have deferred prompt OR on mobile platform iOS/Android)
+  // Can install if not already installed AND (we have a native prompt OR on iOS Safari / Android)
   const canInstall = !isInstalled && (deferredPrompt !== null || isIOS || isAndroid);
 
   return {

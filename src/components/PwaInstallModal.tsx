@@ -104,6 +104,11 @@ export function PwaInstallModal({ isOpen, onClose, platform = "ios" }: PwaInstal
                   Tap <strong className="text-white font-medium">Install</strong> in the confirmation popup.
                 </span>
               </li>
+              <li className="text-[11px] text-zinc-400 px-1">
+                Don&apos;t see this option? If you opened VolTex inside another app (such as WhatsApp or
+                Instagram), open the link in Chrome first. If VolTex is already installed, open it from your
+                home screen.
+              </li>
             </ol>
           ) : (
             <ol className="space-y-2.5 list-none pl-0">

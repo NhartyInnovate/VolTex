@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { PWA_INSTALL_CAPTURE_SCRIPT } from "@/lib/pwaInstall";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -63,6 +64,8 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem("voltex-theme-preference");if(t==="light"||(!t&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches)){document.documentElement.classList.remove("dark");document.documentElement.classList.add("light");document.documentElement.style.colorScheme="light";}else{document.documentElement.classList.add("dark");document.documentElement.classList.remove("light");document.documentElement.style.colorScheme="dark";}}catch(e){}})();`,
           }}
         />
+        {/* Capture beforeinstallprompt before hydration so the native install prompt is never missed */}
+        <script dangerouslySetInnerHTML={{ __html: PWA_INSTALL_CAPTURE_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col antialiased selection:bg-tedx-red selection:text-white transition-colors duration-200">
         <ThemeProvider>

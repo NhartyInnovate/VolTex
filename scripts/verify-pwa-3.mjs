@@ -26,15 +26,43 @@ const hookContent = fs.readFileSync(hookPath, "utf-8");
 assert.match(hookContent, /['"]use client['"]/, "Hook file must be a client module.");
 assert.match(hookContent, /display-mode:\s*standalone/, "Hook must check for standalone display mode.");
 assert.match(hookContent, /window\.navigator\.standalone/, "Hook must check legacy iOS standalone property.");
-assert.match(hookContent, /beforeinstallprompt/, "Hook must listen to beforeinstallprompt event.");
+assert.match(hookContent, /PWA_PROMPT_READY_EVENT/, "Hook must subscribe to the early-capture prompt notification.");
 assert.match(hookContent, /appinstalled/, "Hook must listen to appinstalled event.");
-assert.match(hookContent, /prompt\(\)/, "Hook must invoke prompt() on user action.");
+assert.match(hookContent, /launchNativeInstallPrompt\(nativePrompt\)/, "Hook must launch the native prompt directly.");
 assert.match(hookContent, /voltex_pwa_install_dismissed/, "Hook must track dismissal state.");
 assert.match(hookContent, /isIOS/, "Hook must detect iOS Safari devices.");
 assert.match(hookContent, /isAndroid/, "Hook must detect Android devices.");
-assert.match(hookContent, /window\.__voltex_pwa_prompt/, "Hook must preserve prompt on global window object.");
+assert.match(hookContent, /window\.__voltex_pwa_prompt/, "Hook must read the captured prompt from the window.");
 
-console.log("  ✓ usePwaInstall hook implements complete standalone, prompt, Android, and iOS detection.");
+// Single-listener / hydration / stale-reference invariants
+assert.doesNotMatch(
+  hookContent,
+  /addEventListener\(\s*["']beforeinstallprompt["']/,
+  "Hook must not register its own beforeinstallprompt listener (early capture script owns it)."
+);
+assert.match(
+  hookContent,
+  /useState<BeforeInstallPromptEvent \| null>\(null\)/,
+  "deferredPrompt must initialise to null to avoid hydration mismatches."
+);
+assert.doesNotMatch(hookContent, /\},\s*\[deferredPrompt\]\);/, "Listener effect must not re-run on prompt changes.");
+
+const promptInstallBody = hookContent.slice(
+  hookContent.indexOf("const promptInstall = useCallback"),
+  hookContent.indexOf("const openInstallInstructions")
+);
+assert.ok(promptInstallBody.length > 0, "promptInstall must exist.");
+assert.doesNotMatch(promptInstallBody, /\bawait\b/, "promptInstall must not await anything before launching prompt().");
+const clearIdx = promptInstallBody.indexOf("window.__voltex_pwa_prompt = null");
+const launchIdx = promptInstallBody.indexOf("launchNativeInstallPrompt(nativePrompt)");
+const modalIdx = promptInstallBody.indexOf("setShowInstructionsModal(true)");
+assert.ok(clearIdx > -1 && clearIdx < launchIdx, "Consumed prompt must be cleared before launching.");
+assert.ok(
+  modalIdx > -1 && modalIdx < launchIdx && promptInstallBody.indexOf("if (!nativePrompt)") < modalIdx,
+  "Instructions modal must only open on the no-native-prompt branch (or after a failed launch)."
+);
+
+console.log("  ✓ usePwaInstall hook launches the native prompt directly with no stale refs or duplicate listeners.");
 
 // 2. Verify PwaInstallModal Component
 console.log("[2] Verifying src/components/PwaInstallModal.tsx...");
@@ -75,6 +103,16 @@ assert.ok(
   installOccurrences >= 2,
   `Navbar must provide 'Install App' across desktop, guest mobile drawer, and auth drawer. Found: ${installOccurrences}`
 );
+
+// Install handlers must invoke promptInstall() first (inside the tap), not after other awaits
+const installHandlers = navbarContent.match(/onClick=\{[^}]*?promptInstall\(\)[^}]*?\}/gs) || [];
+assert.ok(installHandlers.length >= 3, `Expected 3 install handlers (desktop, guest, auth). Found: ${installHandlers.length}`);
+for (const handler of installHandlers) {
+  assert.doesNotMatch(handler, /\bawait\b/, "Install handlers must not await before invoking the prompt.");
+  const promptIdx = handler.indexOf("promptInstall()");
+  const closeIdx = handler.search(/set(Mobile|User)\w*Open\(false\)/);
+  assert.ok(closeIdx === -1 || promptIdx < closeIdx, "promptInstall() must be invoked before closing menus.");
+}
 
 console.log("  ✓ Navbar cleanly renders Install App in desktop dropdown, mobile drawer (guest & auth).");
 
@@ -153,6 +191,99 @@ const stateUnsupported = simulateInstallState({
 assert.equal(stateUnsupported.canInstall, false);
 
 console.log("  ✓ Simulated install states match expected W3C and iOS platform behaviors.");
+
+// 5. Behavioural tests against the real src/lib/pwaInstall.ts (via Node type stripping)
+console.log("[5] Testing src/lib/pwaInstall.ts capture script, native prompt launcher & platform detection...");
+
+const layoutContent = fs.readFileSync(path.join(rootDir, "src", "app", "layout.tsx"), "utf-8");
+assert.match(
+  layoutContent,
+  /<script dangerouslySetInnerHTML=\{\{ __html: PWA_INSTALL_CAPTURE_SCRIPT \}\} \/>/,
+  "RootLayout must inline the early beforeinstallprompt capture script in <head>."
+);
+assert.ok(
+  layoutContent.indexOf("PWA_INSTALL_CAPTURE_SCRIPT }}") < layoutContent.indexOf("</head>"),
+  "Capture script must be rendered inside <head>, before hydration."
+);
+
+const vm = await import("node:vm");
+const { pathToFileURL } = await import("node:url");
+const lib = await import(pathToFileURL(path.join(rootDir, "src", "lib", "pwaInstall.ts")).href);
+
+// 5a. Early capture script: stores the event, prevents the mini-infobar, notifies the hook, clears on install
+{
+  const win = new EventTarget();
+  vm.runInNewContext(lib.PWA_INSTALL_CAPTURE_SCRIPT, { window: win, Event });
+  assert.equal(win.__voltex_pwa_prompt, null, "Capture script must initialise the global to null.");
+
+  let notified = 0;
+  win.addEventListener(lib.PWA_PROMPT_READY_EVENT, () => notified++);
+
+  const bip = new Event("beforeinstallprompt", { cancelable: true });
+  win.dispatchEvent(bip);
+  assert.equal(bip.defaultPrevented, true, "Capture script must call preventDefault().");
+  assert.equal(win.__voltex_pwa_prompt, bip, "Capture script must store the event.");
+  assert.equal(notified, 1, "Capture script must notify mounted hooks exactly once.");
+
+  win.dispatchEvent(new Event("appinstalled"));
+  assert.equal(win.__voltex_pwa_prompt, null, "appinstalled must clear the stored prompt.");
+}
+
+// 5b. launchNativeInstallPrompt: prompt() runs synchronously; outcomes handled safely
+function fakePrompt({ outcome = "accepted", promptThrows = false, promptRejects = false } = {}) {
+  const evt = { prompted: 0 };
+  evt.prompt = () => {
+    evt.prompted++;
+    if (promptThrows) throw new Error("InvalidStateError");
+    return promptRejects ? Promise.reject(new Error("NotAllowedError")) : Promise.resolve();
+  };
+  evt.userChoice = Promise.resolve({ outcome, platform: "web" });
+  return evt;
+}
+
+{
+  const accepted = fakePrompt({ outcome: "accepted" });
+  const pending = lib.launchNativeInstallPrompt(accepted);
+  assert.equal(accepted.prompted, 1, "prompt() must be invoked synchronously within the user gesture.");
+  assert.equal(await pending, "accepted");
+
+  assert.equal(await lib.launchNativeInstallPrompt(fakePrompt({ outcome: "dismissed" })), "dismissed");
+  assert.equal(await lib.launchNativeInstallPrompt(fakePrompt({ promptThrows: true })), "unavailable");
+  assert.equal(await lib.launchNativeInstallPrompt(fakePrompt({ promptRejects: true })), "unavailable");
+}
+
+// 5c. Platform detection
+{
+  const android = lib.detectInstallPlatform(
+    "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+    "Linux armv8l",
+    5
+  );
+  assert.deepEqual(android, { isIOS: false, isAndroid: true });
+
+  const iosSafari = lib.detectInstallPlatform(
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "iPhone",
+    5
+  );
+  assert.deepEqual(iosSafari, { isIOS: true, isAndroid: false });
+
+  const iosChrome = lib.detectInstallPlatform(
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0 Mobile/15E148 Safari/604.1",
+    "iPhone",
+    5
+  );
+  assert.equal(iosChrome.isIOS, false, "Chrome on iOS must not be treated as iOS Safari.");
+
+  const desktop = lib.detectInstallPlatform(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    "Win32",
+    0
+  );
+  assert.deepEqual(desktop, { isIOS: false, isAndroid: false });
+}
+
+console.log("  ✓ Early capture, one-tap native prompt launch, outcome handling and platform detection verified.");
 
 console.log("------------------------------------------------------------");
 console.log("All PWA-3 Verification Checks Passed Successfully!");

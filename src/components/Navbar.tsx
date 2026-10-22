@@ -332,9 +332,10 @@ export function Navbar() {
                     {canInstall && (
                       <button
                         type="button"
-                        onClick={async () => {
+                        onClick={() => {
+                          // Invoke first so the native prompt launches within the user gesture
+                          void promptInstall();
                           setUserDropdownOpen(false);
-                          await promptInstall();
                         }}
                         className="w-full text-left flex items-center gap-2 px-3 py-2 text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800/50"
                       >
@@ -423,9 +424,10 @@ export function Navbar() {
                 {canInstall && (
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
+                      // Invoke first so the native prompt launches within the user gesture
+                      void promptInstall();
                       setMobileMenuOpen(false);
-                      await promptInstall();
                     }}
                     className="w-full text-center flex items-center justify-center gap-2 py-2.5 rounded border border-zinc-800 text-zinc-300 hover:text-white text-xs active:scale-[0.98] transition-all font-medium bg-zinc-900/40"
                   >
@@ -496,9 +498,10 @@ export function Navbar() {
               {canInstall && (
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={() => {
+                    // Invoke first so the native prompt launches within the user gesture
+                    void promptInstall();
                     setMobileMenuOpen(false);
-                    await promptInstall();
                   }}
                   className="w-full text-left flex items-center gap-2 py-1.5 text-xs text-zinc-300 hover:text-white transition-colors font-medium"
                 >

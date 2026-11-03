@@ -71,6 +71,7 @@ const CONFIRMED_TEAMS = [
   "Public Relation (PR) Team",
   "Technical/Sound Team",
   "Website Team",
+  "Influencers",
 ];
 
 function getSafeVolunteerTeam(team) {
@@ -346,7 +347,8 @@ console.log("\n[Test 6] Configurable Scoring Policies");
 // 7. Test Confirmed Team List & Fallbacks
 console.log("\n[Test 7] Volunteer Team Structure & Safe Fallbacks");
 {
-  assert.equal(CONFIRMED_TEAMS.length, 12, "Must contain exactly 12 confirmed community teams");
+  assert.equal(CONFIRMED_TEAMS.length, 13, "Must contain exactly 13 confirmed community teams");
+  assert.ok(CONFIRMED_TEAMS.includes("Influencers"));
   assert.ok(CONFIRMED_TEAMS.includes("Ticket and Registration Team"));
   assert.ok(CONFIRMED_TEAMS.includes("TEDxGwarinpa Novelty Match ⚽"));
   assert.ok(CONFIRMED_TEAMS.includes("Website Team"));

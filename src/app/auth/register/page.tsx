@@ -1,13 +1,202 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { VOLUNTEER_TEAMS } from "@/config/constants";
 import { triggerConfetti } from "@/lib/confetti";
 import { createClient } from "@/lib/supabase/client";
 import { getAppUrl, getAuthErrorMessage } from "@/lib/utils";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ChevronDown, Check } from "lucide-react";
 import { LoadingSpinner, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
+
+interface TeamSelectDropdownProps {
+  value: string;
+  onChange: (team: string) => void;
+  options: readonly string[];
+  disabled?: boolean;
+}
+
+function TeamSelectDropdown({
+  value,
+  onChange,
+  options,
+  disabled = false,
+}: TeamSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedIndex = options.indexOf(value);
+  const [focusedIndex, setFocusedIndex] = useState(
+    selectedIndex >= 0 ? selectedIndex : 0
+  );
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Synchronize focusedIndex whenever dropdown opens or value changes
+  useEffect(() => {
+    if (isOpen) {
+      const idx = options.indexOf(value);
+      setFocusedIndex(idx >= 0 ? idx : 0);
+    }
+  }, [isOpen, value, options]);
+
+  // Scroll focused option into view smoothly
+  useEffect(() => {
+    if (isOpen && focusedIndex >= 0 && listRef.current) {
+      const item = listRef.current.children[focusedIndex] as HTMLElement | undefined;
+      if (item) {
+        item.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [isOpen, focusedIndex]);
+
+  // Close when tapping / clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, {
+      passive: true,
+    });
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleSelect = (team: string) => {
+    onChange(team);
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+
+    if (isOpen && e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      return;
+    }
+
+    if (
+      e.key === "ArrowDown" ||
+      e.key === "ArrowUp" ||
+      e.key === "Enter" ||
+      e.key === " "
+    ) {
+      e.preventDefault();
+      setIsOpen(true);
+    }
+  };
+
+  const handleListKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setFocusedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (focusedIndex >= 0 && focusedIndex < options.length) {
+        handleSelect(options[focusedIndex]);
+      }
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setFocusedIndex(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setFocusedIndex(options.length - 1);
+    } else if (e.key === "Tab") {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        id="volunteer-team-select"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-labelledby="volunteer-team-label volunteer-team-select"
+        onClick={() => {
+          if (!disabled) setIsOpen((prev) => !prev);
+        }}
+        onKeyDown={handleTriggerKeyDown}
+        className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-200 text-left flex items-center justify-between focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span className="truncate pr-2 font-medium">{value}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-zinc-400 dark:text-zinc-500 transition-transform duration-200 shrink-0 ${
+            isOpen ? "rotate-180 text-tedx-red dark:text-tedx-red" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-labelledby="volunteer-team-label"
+          aria-activedescendant={`team-option-${focusedIndex}`}
+          tabIndex={0}
+          onKeyDown={handleListKeyDown}
+          className="absolute z-50 left-0 right-0 mt-1 max-h-56 sm:max-h-60 overflow-y-auto overscroll-contain bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg shadow-black/10 dark:shadow-black/50 py-1 focus:outline-none"
+        >
+          {options.map((team, index) => {
+            const isSelected = team === value;
+            const isFocused = index === focusedIndex;
+
+            return (
+              <div
+                key={team}
+                id={`team-option-${index}`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => handleSelect(team)}
+                onMouseEnter={() => setFocusedIndex(index)}
+                className={`w-full px-3 py-2.5 flex items-center justify-between text-xs cursor-pointer select-none transition-colors ${
+                  isSelected
+                    ? "bg-red-50 text-tedx-red dark:bg-tedx-red/10 dark:text-red-400 font-semibold"
+                    : isFocused
+                    ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800/80 dark:text-zinc-100"
+                    : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                }`}
+              >
+                <span className="truncate pr-2">{team}</span>
+                {isSelected && (
+                  <Check
+                    className="w-3.5 h-3.5 text-tedx-red dark:text-red-400 shrink-0"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -210,22 +399,20 @@ export default function RegisterPage() {
 
               {/* Team */}
               <div>
-                <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                <label
+                  id="volunteer-team-label"
+                  className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                >
                   Volunteer Team
                 </label>
-                <select
+                <TeamSelectDropdown
                   value={formData.volunteerTeam}
-                  onChange={(e) =>
-                    setFormData({ ...formData, volunteerTeam: e.target.value })
+                  onChange={(team) =>
+                    setFormData({ ...formData, volunteerTeam: team })
                   }
-                  className="w-full bg-white dark:bg-[#09090b] border border-zinc-300 dark:border-zinc-800 rounded px-2.5 py-2 text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors"
-                >
-                  {VOLUNTEER_TEAMS.map((team) => (
-                    <option key={team} value={team}>
-                      {team}
-                    </option>
-                  ))}
-                </select>
+                  options={VOLUNTEER_TEAMS}
+                  disabled={isSubmitting}
+                />
               </div>
 
               {/* Email */}

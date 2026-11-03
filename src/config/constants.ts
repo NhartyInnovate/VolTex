@@ -32,6 +32,7 @@ export const VOLUNTEER_TEAMS = [
   "Public Relation (PR) Team",
   "Technical/Sound Team",
   "Website Team",
+  "Influencers",
 ] as const;
 
 export type VolunteerTeam = (typeof VOLUNTEER_TEAMS)[number];

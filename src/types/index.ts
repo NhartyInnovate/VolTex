@@ -25,6 +25,7 @@ export interface UserProfile {
   phoneNumber: string;
   volunteerTeam: VolunteerTeam | string;
   role: UserRole;
+  referralCode?: string;
   createdAt: string;
 }
 
@@ -98,4 +99,65 @@ export interface AppNotification {
   deduplicationKey: string;
   isRead: boolean;
   createdAt: string;
+}
+
+
+export interface BuyerReferralLead {
+  id: string;
+  volunteerId: string;
+  referralCode: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  ticketQuantity: number;
+  sourceAttribution?: string | null;
+  status: "pending_purchase" | "converted" | "expired";
+  conversionCount: number;
+  firstConvertedAt?: string | null;
+  lastConvertedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuyerReferralTouch {
+  id: string;
+  buyerReferralId: string;
+  subsequentVolunteerId: string;
+  referralCode: string;
+  sourceAttribution?: string | null;
+  createdAt: string;
+}
+
+export interface LeadClaimConversion {
+  id: string;
+  buyerReferralId: string;
+  referralId: string;
+  originalClaimantId: string;
+  creditedVolunteerId: string;
+  attributionResolution: "match" | "award_to_referrer" | "award_to_claimant";
+  emailOverrideApplied: boolean;
+  adminNotes?: string | null;
+  convertedBy?: string | null;
+  convertedAt: string;
+}
+
+export interface VolunteerReferralStats {
+  allTimeVerifiedTickets: number;
+  allTimeOfficialPoints: number;
+  filteredVerifiedTickets: number;
+  filteredOfficialPoints: number;
+  totalRawRequests: number;
+  totalTrackedVisits: number;
+  totalUniqueVisitorDays: number;
+  periodLeadsCaptured: number;
+  periodLeadsConverted: number;
+  periodLeadApprovedClaims: number;
+  periodLeadVerifiedTickets: number;
+  cohortLeadsCaptured: number;
+  cohortLeadsConverted: number;
+  cohortLeadApprovedClaims: number;
+  cohortLeadVerifiedTickets: number;
+  cohortConversionRate: number;
+  cohortTicketsPerLead: number;
 }

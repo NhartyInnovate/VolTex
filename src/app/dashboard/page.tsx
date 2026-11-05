@@ -19,6 +19,7 @@ import { triggerConfetti } from "@/lib/confetti";
 import { AnimatedLeaderboard } from "@/components/AnimatedLeaderboard";
 import { LoadingSpinner, FullPageLoader } from "@/components/LoadingSpinner";
 import { OnboardingTour, TourStep } from "@/components/OnboardingTour";
+import { VolunteerReferralCard } from "@/components/referrals/VolunteerReferralCard";
 import {
   Copy,
   Check,
@@ -128,7 +129,7 @@ function VolunteerDashboardContent() {
       // 2. Fetch authenticated user profile (enforced by RLS auth.uid() = id)
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, full_name, phone_number, volunteer_team, role, created_at")
+        .select("id, full_name, phone_number, volunteer_team, role, created_at, referral_code")
         .eq("id", user.id)
         .single();
 
@@ -144,6 +145,7 @@ function VolunteerDashboardContent() {
         phoneNumber: profileData.phone_number,
         volunteerTeam: getSafeVolunteerTeam(profileData.volunteer_team),
         role: profileData.role,
+        referralCode: profileData.referral_code || "",
         createdAt: profileData.created_at,
       });
 
@@ -623,6 +625,13 @@ function VolunteerDashboardContent() {
           </button>
         </div>
       </div>
+
+      {profile?.referralCode && (
+        <VolunteerReferralCard
+          referralCode={profile.referralCode}
+          volunteerName={profile.fullName}
+        />
+      )}
 
       {/* 4. Section Navigation Tabs: Promotional Templates | My Referral Claims | Live Challenge Standings */}
       <div className="w-full">

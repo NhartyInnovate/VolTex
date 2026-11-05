@@ -58,9 +58,16 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
+    if (message.includes("REFERRAL_CAPTURE_SECRET")) {
+      console.error("[TRACK_VISIT_API] Configuration error:", message);
+      return NextResponse.json(
+        { success: false, error: "SERVER_CONFIG_ERROR", message: "Server security configuration error." },
+        { status: 500 }
+      );
+    }
     console.error("[TRACK_VISIT_API] Unexpected error:", message);
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred." },
       { status: 500 }
     );
   }

@@ -28,6 +28,7 @@ export function BuyerCaptureForm({
     status: string;
     redirectUrl: string;
     leadId: string;
+    creditedVolunteerName?: string | null;
   } | null>(null);
 
   // Background beacon for human visit tracking
@@ -110,6 +111,12 @@ export function BuyerCaptureForm({
 
   // Render Confirmation State
   if (successPayload) {
+    const isTouchRecorded = successPayload.status === "touch_recorded";
+    // Never show the URL's volunteer if it was recorded as a subsequent touch for another volunteer
+    const confirmedVolunteer =
+      successPayload.creditedVolunteerName ||
+      (!isTouchRecorded && volunteerName ? volunteerName : null);
+
     return (
       <div className="bg-white dark:bg-zinc-900 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl p-6 sm:p-8 shadow-xl max-w-lg mx-auto text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
         <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
@@ -121,10 +128,17 @@ export function BuyerCaptureForm({
             Referral Secured!
           </h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {volunteerName
-              ? `Your ticket purchase will support volunteer ${volunteerName}.`
+            {confirmedVolunteer
+              ? `Your ticket purchase will support volunteer ${confirmedVolunteer}.`
+              : isTouchRecorded
+              ? "Your ticket purchase remains attributed to your initial volunteer referrer."
               : "Your referral attribution has been successfully recorded."}
           </p>
+          {isTouchRecorded && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-lg p-2.5 mt-2">
+              We recognized your previous referral registration. Under TEDx challenge rules, first-touch attribution is locked to ensure fair volunteer credit.
+            </p>
+          )}
         </div>
 
         <div className="bg-zinc-50 dark:bg-zinc-800/60 rounded-xl p-4 text-xs text-zinc-500 dark:text-zinc-400 space-y-1">

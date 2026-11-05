@@ -40,10 +40,29 @@ export function getClientIp(headers: Headers): string {
 }
 
 /**
+ * Minimum required character length for REFERRAL_CAPTURE_SECRET to ensure sufficient entropy.
+ */
+export const MIN_CAPTURE_SECRET_LENGTH = 16;
+
+/**
+ * Retrieves and validates the server-only REFERRAL_CAPTURE_SECRET.
+ * Throws a descriptive configuration error if the secret is missing or insufficiently strong.
+ */
+export function getCaptureSecret(): string {
+  const secret = process.env.REFERRAL_CAPTURE_SECRET;
+  if (!secret || typeof secret !== "string" || secret.trim().length < MIN_CAPTURE_SECRET_LENGTH) {
+    throw new Error(
+      `REFERRAL_CAPTURE_SECRET must be configured on the server with at least ${MIN_CAPTURE_SECRET_LENGTH} characters.`
+    );
+  }
+  return secret.trim();
+}
+
+/**
  * Computes a secure HMAC-SHA256 hash using the server-only REFERRAL_CAPTURE_SECRET.
  */
 export function computeHmacSha256(value: string, salt: string = ""): string {
-  const secret = process.env.REFERRAL_CAPTURE_SECRET || "voltex_fallback_capture_secret_key";
+  const secret = getCaptureSecret();
   return crypto
     .createHmac("sha256", secret)
     .update(value + (salt ? `:${salt}` : ""))

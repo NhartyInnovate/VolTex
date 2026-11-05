@@ -109,17 +109,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Return Success Payload with Safe Official Ticket Destination
+    // 4. Resolve Canonical Credited Volunteer Name for Safe Confirmation
+    let creditedVolunteerName: string | null = null;
+    if (data.volunteer_id) {
+      try {
+        const { data: creditedProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("full_name")
+          .eq("id", data.volunteer_id)
+          .maybeSingle();
+
+        if (creditedProfile?.full_name) {
+          creditedVolunteerName = creditedProfile.full_name;
+        }
+      } catch (profErr) {
+        console.warn("[CAPTURE_API] Could not resolve credited volunteer name:", profErr);
+      }
+    }
+
+    // 5. Return Success Payload with Safe Official Ticket Destination
     return NextResponse.json({
       success: true,
       status: data.status,
       leadId: data.lead_id,
       volunteerId: data.volunteer_id,
       referralCode: data.referral_code,
+      creditedVolunteerName,
       redirectUrl: CONFERENCE_CONFIG.ticketUrl,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
+    if (message.includes("REFERRAL_CAPTURE_SECRET")) {
+      console.error("[CAPTURE_API] Configuration error:", message);
+      return NextResponse.json(
+        { success: false, error: "SERVER_CONFIG_ERROR", message: "Server security configuration error. Please contact support." },
+        { status: 500 }
+      );
+    }
     console.error("[CAPTURE_API] Unexpected error:", message);
     return NextResponse.json(
       { success: false, error: "INTERNAL_ERROR", message: "An unexpected error occurred." },

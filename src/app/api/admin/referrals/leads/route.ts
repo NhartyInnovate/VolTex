@@ -44,7 +44,7 @@ export async function GET() {
         last_converted_at,
         expires_at,
         created_at,
-        profiles:volunteer_id (
+        profiles:profiles!volunteer_id (
           full_name,
           volunteer_team
         )
@@ -56,7 +56,15 @@ export async function GET() {
       return NextResponse.json({ error: leadsError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ leads: leads || [] });
+    // Safely normalize profiles to a single object or null
+    const formattedLeads = (leads || []).map((lead: any) => ({
+      ...lead,
+      profiles: Array.isArray(lead.profiles)
+        ? lead.profiles[0] || null
+        : lead.profiles || null,
+    }));
+
+    return NextResponse.json({ leads: formattedLeads });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });

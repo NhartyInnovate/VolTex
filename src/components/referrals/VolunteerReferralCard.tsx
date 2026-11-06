@@ -74,15 +74,14 @@ export function VolunteerReferralCard({
     const originalBodyWidth = document.body.style.width;
     const originalBodyOverflow = document.body.style.overflow;
     const originalHtmlOverflow = document.documentElement.style.overflow;
-    const originalTouchAction = document.body.style.touchAction;
 
     // Fixed position and overflow lock prevent underlying page scrolling on Android Chrome & iOS Safari
+    // Note: touchAction is NOT set to 'none' in order to preserve browser pinch-to-zoom
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
 
     return () => {
       document.body.style.position = originalBodyPosition;
@@ -90,8 +89,12 @@ export function VolunteerReferralCard({
       document.body.style.width = originalBodyWidth;
       document.body.style.overflow = originalBodyOverflow;
       document.documentElement.style.overflow = originalHtmlOverflow;
-      document.body.style.touchAction = originalTouchAction;
+
+      // Instantly restore scroll position by temporarily overriding global smooth scrolling
+      const originalHtmlScrollBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
       window.scrollTo(0, scrollY);
+      document.documentElement.style.scrollBehavior = originalHtmlScrollBehavior;
     };
   }, [qrModalOpen]);
 
@@ -311,12 +314,7 @@ export function VolunteerReferralCard({
               setQrModalOpen(false);
             }
           }}
-          onTouchMove={(e) => {
-            if (e.target === e.currentTarget) {
-              e.preventDefault();
-            }
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150 touch-none"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150"
           style={{
             paddingTop: "max(0.75rem, env(safe-area-inset-top, 0.75rem))",
             paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0.75rem))",

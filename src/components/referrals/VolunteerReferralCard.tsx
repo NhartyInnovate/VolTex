@@ -33,6 +33,7 @@ export function VolunteerReferralCard({
   const [mounted, setMounted] = useState(false);
 
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const prevQrModalOpenRef = useRef(false);
@@ -74,21 +75,82 @@ export function VolunteerReferralCard({
     const originalBodyWidth = document.body.style.width;
     const originalBodyOverflow = document.body.style.overflow;
     const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyTouchAction = document.body.style.touchAction;
 
     // Fixed position and overflow lock prevent underlying page scrolling on Android Chrome & iOS Safari
-    // Note: touchAction is NOT set to 'none' in order to preserve browser pinch-to-zoom
+    // Note: touchAction is set to 'pan-y pinch-zoom' to allow dialog scrolling & pinch-to-zoom across ancestor intersection
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
+    document.body.style.touchAction = "pan-y pinch-zoom";
+
+    // Non-passive touchmove prevention to guarantee mobile browsers cannot pan background
+    const backdrop = backdropRef.current;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      // Allow multi-finger gestures (browser pinch-to-zoom)
+      if (e.touches.length > 1) {
+        return;
+      }
+
+      const modal = modalRef.current;
+      // If touch is outside the modal dialog (on backdrop), prevent dragging
+      if (!modal || !modal.contains(e.target as Node)) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // If modal content does not overflow vertically, prevent dragging
+      if (modal.scrollHeight <= modal.clientHeight) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // If modal content is scrollable, prevent overscroll rubber-banding at edges
+      const currentY = e.touches[0].clientY;
+      const isDraggingDown = currentY > touchStartY;
+      const isDraggingUp = currentY < touchStartY;
+
+      const isAtTop = modal.scrollTop <= 0;
+      const isAtBottom = modal.scrollTop + modal.clientHeight >= modal.scrollHeight - 1;
+
+      if ((isAtTop && isDraggingDown) || (isAtBottom && isDraggingUp)) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    if (backdrop) {
+      backdrop.addEventListener("touchstart", handleTouchStart, { passive: true });
+      backdrop.addEventListener("touchmove", handleTouchMove, { passive: false });
+    }
 
     return () => {
+      if (backdrop) {
+        backdrop.removeEventListener("touchstart", handleTouchStart);
+        backdrop.removeEventListener("touchmove", handleTouchMove);
+      }
+
       document.body.style.position = originalBodyPosition;
       document.body.style.top = originalBodyTop;
       document.body.style.width = originalBodyWidth;
       document.body.style.overflow = originalBodyOverflow;
       document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.touchAction = originalBodyTouchAction;
 
       // Instantly restore scroll position by temporarily overriding global smooth scrolling
       const originalHtmlScrollBehavior = document.documentElement.style.scrollBehavior;
@@ -305,6 +367,7 @@ export function VolunteerReferralCard({
       {/* QR Code Modal (Portaled directly to document.body, responsive with backdrop scroll locking) */}
       {qrModalOpen && mounted && createPortal(
         <div
+          ref={backdropRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="qr-modal-title"
@@ -314,8 +377,9 @@ export function VolunteerReferralCard({
               setQrModalOpen(false);
             }
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150 touch-pan-y touch-pinch-zoom"
           style={{
+            touchAction: "pan-y pinch-zoom",
             paddingTop: "max(0.75rem, env(safe-area-inset-top, 0.75rem))",
             paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0.75rem))",
             paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0.75rem))",
@@ -326,6 +390,9 @@ export function VolunteerReferralCard({
             ref={modalRef}
             tabIndex={-1}
             className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-4 sm:p-6 text-center space-y-4 sm:space-y-5 shadow-2xl relative max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-150 focus:outline-none"
+            style={{
+              touchAction: "pan-y pinch-zoom",
+            }}
           >
             {/* Top-right close button */}
             <button

@@ -104,7 +104,19 @@ BEGIN
     END IF;
 
     -- -------------------------------------------------------------------------
-    -- 4. Exclusively Lock Target Profile Row
+    -- 4. Deletion Operation Serialization Advisory Lock
+    -- -------------------------------------------------------------------------
+    -- Acquires a transaction-scoped advisory lock using a stable, namespaced
+    -- 64-bit key. This serializes volunteer and administrator deletion workflows,
+    -- eliminating race conditions where concurrent administrator deletions
+    -- could simultaneously observe count(admin) > 1 and delete both accounts,
+    -- leaving zero administrators.
+    PERFORM pg_catalog.pg_advisory_xact_lock(
+        pg_catalog.hashtextextended('account_deletion:global_serialization', 0)
+    );
+
+    -- -------------------------------------------------------------------------
+    -- 5. Exclusively Lock Target Profile Row
     -- -------------------------------------------------------------------------
     -- In PostgreSQL, foreign-key checks during concurrent inserts (e.g. in
     -- capture_buyer_referral) acquire a FOR KEY SHARE lock on the referenced
@@ -131,7 +143,7 @@ BEGIN
     END IF;
 
     -- -------------------------------------------------------------------------
-    -- 5. Last Administrator Guard
+    -- 6. Last Administrator Guard
     -- -------------------------------------------------------------------------
     IF v_target_profile.role = 'admin' THEN
         SELECT count(*) INTO v_admin_count
@@ -148,7 +160,7 @@ BEGIN
     END IF;
 
     -- -------------------------------------------------------------------------
-    -- 6. Check Restrictive Foreign-Key Relationships
+    -- 7. Check Restrictive Foreign-Key Relationships
     -- -------------------------------------------------------------------------
     -- Under the FOR UPDATE lock on public.profiles, no new foreign-key child
     -- records can be inserted concurrently.
@@ -204,14 +216,14 @@ BEGIN
     END IF;
 
     -- -------------------------------------------------------------------------
-    -- 7. Count Dependent Referrals for Logging
+    -- 8. Count Dependent Referrals for Logging
     -- -------------------------------------------------------------------------
     SELECT count(*) INTO v_referral_count
     FROM public.referrals
     WHERE volunteer_id = p_target_user_id;
 
     -- -------------------------------------------------------------------------
-    -- 8. Record Administrative Audit Log Event Inside Transaction
+    -- 9. Record Administrative Audit Log Event Inside Transaction
     -- -------------------------------------------------------------------------
     INSERT INTO public.audit_logs (actor_id, action, notes)
     VALUES (
@@ -225,7 +237,7 @@ BEGIN
     );
 
     -- -------------------------------------------------------------------------
-    -- 9. Atomic Cascading Deletion
+    -- 10. Atomic Cascading Deletion
     -- -------------------------------------------------------------------------
     -- Deleting auth.users automatically triggers ON DELETE CASCADE in PostgreSQL for:
     --   - public.profiles (via profiles_id_fkey)

@@ -381,6 +381,7 @@ export default function AdminUsersPage() {
                             onClick={() => {
                               setUserToDelete(u);
                               setConfirmNameInput("");
+                              setActionError(null);
                             }}
                             className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors text-xs font-medium"
                             title="Delete this user and all associated ticket claims"
@@ -489,8 +490,21 @@ export default function AdminUsersPage() {
                   <li>
                     Any points earned on the live leaderboard will be removed.
                   </li>
+                  <li>
+                    Volunteers with active buyer leads, referral touches, or conversion claims cannot be deleted until those attribution records are resolved or reassigned.
+                  </li>
                 </ul>
               </div>
+
+              {actionError && (
+                <div className="p-3 rounded bg-red-100 dark:bg-red-950/70 border border-red-300 dark:border-red-800 text-red-900 dark:text-red-200 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-semibold">Account Deletion Blocked</div>
+                    <p className="leading-relaxed text-[11px] text-red-800 dark:text-red-300">{actionError}</p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">

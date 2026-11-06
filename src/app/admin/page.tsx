@@ -20,6 +20,7 @@ import {
 } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { LoadingSpinner, FullPageLoader } from "@/components/LoadingSpinner";
+import { AdminLeadsManagement } from "@/components/admin/AdminLeadsManagement";
 import {
   Search,
   X,
@@ -36,6 +37,7 @@ import {
   ShieldAlert,
   ArrowUpRight,
   TrendingUp,
+  Sparkles,
 } from "lucide-react";
 
 interface VolunteerProfileSummary {
@@ -76,7 +78,7 @@ function AdminDashboardContent() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"referrals" | "volunteers" | "teams" | "settings">("referrals");
+  const [activeTab, setActiveTab] = useState<"referrals" | "leads" | "volunteers" | "teams" | "settings">("referrals");
 
   // Configurable Scoring Policy Form State
   const [draftConfig, setDraftConfig] = useState<ScoringConfig>(
@@ -765,6 +767,17 @@ function AdminDashboardContent() {
             <span>Referrals ({referrals.length})</span>
           </button>
           <button
+            onClick={() => setActiveTab("leads")}
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
+              activeTab === "leads"
+                ? "border-tedx-red text-tedx-red dark:text-white"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0 text-red-500" />
+            <span>Buyer Leads & Telemetry</span>
+          </button>
+          <button
             onClick={() => setActiveTab("volunteers")}
             className={`px-3 sm:px-4 py-2 font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
               activeTab === "volunteers"
@@ -821,6 +834,13 @@ function AdminDashboardContent() {
           <button onClick={() => setActionError(null)} className="text-red-400 hover:text-white">
             <X className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* TAB: Buyer Leads & Telemetry */}
+      {activeTab === "leads" && (
+        <div className="space-y-4 animate-subtle-fade-up">
+          <AdminLeadsManagement />
         </div>
       )}
 

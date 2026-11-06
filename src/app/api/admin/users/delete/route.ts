@@ -9,23 +9,38 @@ interface DeleteUserPayload {
   confirmedFullName?: string;
 }
 
+interface DeletionRpcResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+  buyer_leads_count?: number;
+  touches_count?: number;
+  conversions_count?: number;
+  converted_referrals_count?: number;
+  deleted_referral_count?: number;
+  target_user_id?: string;
+  target_full_name?: string;
+}
+
 /**
  * POST /api/admin/users/delete
- * Secure server-only admin user deletion workflow.
+ * Atomic, server-only administrator volunteer deletion workflow.
  *
- * Strict Protections:
- * 1. Authenticates calling user on server.
- * 2. Revalidates calling user has role 'admin' in public.profiles.
- * 3. Verifies target user exists.
- * 4. Forbids self-deletion (cannot delete currently authenticated admin).
- * 5. Prevents deletion of the last remaining administrator.
- * 6. Deletes dependent records safely in order:
- *    - Referral-linked audit logs
- *    - User's referrals
- *    - General audit records where actor_id is target user
- *    - Deletes Supabase Auth identity via auth.admin.deleteUser (cascading to public.profiles)
- * 7. Records an administrative audit log event.
- * 8. Verifies post-deletion state.
+ * Strict Protections & Guarantees:
+ * 1. Authenticates calling administrator using trusted server session (callingUser.id).
+ * 2. Revalidates calling user's admin role from public.profiles.
+ * 3. Enforces that self-deletion is forbidden using verified session identity (callingUser.id !== targetUserId).
+ * 4. Delegates entire database mutation to public.admin_delete_volunteer_account:
+ *    - Acquires exclusive row-level lock (FOR UPDATE) on target profile.
+ *    - Serializes against concurrent buyer referral captures (conflicting with FOR KEY SHARE).
+ *    - Inspects all restricted foreign keys: buyer_referrals, touches, conversions,
+ *      and legacy referrals linked in lead_claim_conversions.
+ *    - If restricted records exist, rejects deletion atomically (0 records modified).
+ *    - If clean, cascades deletion and preserves audit logs in ONE database transaction.
+ * 5. Post-Commit Auth Synchronization:
+ *    - After PostgreSQL transaction commits, invokes adminClient.auth.admin.deleteUser(targetUserId).
+ *    - Expected to return HTTP 404 because PostgreSQL already removed auth.users.
+ *    - Does NOT participate in the database transaction; failure does not revert database commit.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -79,7 +94,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Prevent self-deletion
+    // 3. Prevent self-deletion (Strictly using verified server session identity)
     if (targetUserId === callingUser.id) {
       return NextResponse.json(
         { error: "Operation forbidden: You cannot delete your own administrator account." },
@@ -89,162 +104,110 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // 4. Verify target user exists
-    const { data: targetProfile, error: targetProfileError } = await adminClient
-      .from("profiles")
-      .select("id, role, full_name, volunteer_team")
-      .eq("id", targetUserId)
-      .maybeSingle();
+    // 4. Execute Atomic Database-Side Deletion RPC
+    // Executes inside a single PostgreSQL transaction with row-level locking (FOR UPDATE)
+    const { data: rpcRawData, error: rpcError } = await adminClient.rpc(
+      "admin_delete_volunteer_account",
+      {
+        p_target_user_id: targetUserId,
+        p_calling_admin_id: callingUser.id,
+      }
+    );
 
-    const { data: targetAuthUser, error: targetAuthError } =
-      await adminClient.auth.admin.getUserById(targetUserId);
-
-    if (!targetProfile && (!targetAuthUser || !targetAuthUser.user)) {
+    if (rpcError) {
       return NextResponse.json(
-        { error: "Not Found: The target user does not exist." },
-        { status: 404 }
+        { error: `Database error during account deletion: ${rpcError.message}` },
+        { status: 500 }
       );
     }
 
-    // 5. Prevent deleting the last administrator
-    if (targetProfile?.role === "admin") {
-      const { count: adminCount, error: countError } = await adminClient
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("role", "admin");
+    const rpcResult = (rpcRawData as unknown as DeletionRpcResult) || {};
 
-      if (countError) {
+    if (!rpcResult.success) {
+      if (rpcResult.error === "HAS_DEPENDENT_BUYER_LEADS") {
         return NextResponse.json(
-          { error: `Failed to verify administrator count: ${countError.message}` },
-          { status: 500 }
+          {
+            error:
+              rpcResult.message ||
+              "Cannot delete volunteer: dependent buyer leads or attribution records exist.",
+            code: "HAS_DEPENDENT_BUYER_LEADS",
+            buyerLeadsCount: rpcResult.buyer_leads_count || 0,
+            touchesCount: rpcResult.touches_count || 0,
+            conversionsCount: rpcResult.conversions_count || 0,
+            convertedReferralsCount: rpcResult.converted_referrals_count || 0,
+          },
+          { status: 409 }
         );
       }
 
-      if ((adminCount || 0) <= 1) {
+      if (rpcResult.error === "USER_NOT_FOUND") {
         return NextResponse.json(
-          { error: "Operation forbidden: Cannot delete the last remaining administrator account." },
+          { error: rpcResult.message || "Not Found: The target user does not exist." },
+          { status: 404 }
+        );
+      }
+
+      if (
+        rpcResult.error === "CANNOT_DELETE_SELF" ||
+        rpcResult.error === "CANNOT_DELETE_LAST_ADMIN"
+      ) {
+        return NextResponse.json(
+          { error: rpcResult.message || "Operation forbidden." },
           { status: 400 }
         );
       }
-    }
 
-    // 6. Inspect dependent referrals count
-    const { data: targetReferrals, error: fetchRefsError } = await adminClient
-      .from("referrals")
-      .select("id")
-      .eq("volunteer_id", targetUserId);
+      if (rpcResult.error === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: rpcResult.message || "Forbidden: Administrator privileges required." },
+          { status: 403 }
+        );
+      }
 
-    if (fetchRefsError) {
       return NextResponse.json(
-        { error: `Failed to inspect dependent referrals: ${fetchRefsError.message}` },
+        { error: rpcResult.message || "Failed to delete volunteer account." },
         { status: 500 }
       );
     }
 
-    const referralIds = (targetReferrals || []).map((r) => r.id);
-
-    // --------------------------------------------------------------------------
-    // 7. ORDERED DEPENDENCY CLEANUP WORKFLOW
-    // --------------------------------------------------------------------------
-    // Step 7.1: Delete audit logs referencing target referrals
-    if (referralIds.length > 0) {
-      const { error: deleteRefAuditsError } = await adminClient
-        .from("audit_logs")
-        .delete()
-        .in("referral_id", referralIds);
-
-      if (deleteRefAuditsError) {
-        return NextResponse.json(
-          { error: `Failed to clear referral audit logs: ${deleteRefAuditsError.message}` },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Step 7.2: Delete target user's referrals
-    if (referralIds.length > 0) {
-      const { error: deleteReferralsError } = await adminClient
-        .from("referrals")
-        .delete()
-        .eq("volunteer_id", targetUserId);
-
-      if (deleteReferralsError) {
-        return NextResponse.json(
-          { error: `Failed to clear user referrals: ${deleteReferralsError.message}` },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Step 7.3: Delete Auth account via Supabase Auth Admin API
-    // (Relational foreign keys: public.profiles CASCADE from auth.users(id))
-    let authDeleted = false;
-    if (targetAuthUser?.user) {
-      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(targetUserId);
-      if (deleteAuthError) {
-        return NextResponse.json(
-          {
-            error: `Failed to delete authentication account: ${deleteAuthError.message}. Dependent referrals were cleaned up, but the auth identity could not be removed.`,
-            code: "AUTH_DELETE_FAILED",
-          },
-          { status: 500 }
-        );
-      }
-      authDeleted = true;
-    }
-
-    // If profile still exists (e.g. user had no auth.users row), remove it directly
-    const { data: remainingProfile } = await adminClient
-      .from("profiles")
-      .select("id")
-      .eq("id", targetUserId)
-      .maybeSingle();
-
-    if (remainingProfile) {
-      await adminClient.from("profiles").delete().eq("id", targetUserId);
-    }
-
-    // --------------------------------------------------------------------------
-    // 8. RECORD ADMINISTRATIVE AUDIT EVENT
-    // --------------------------------------------------------------------------
+    // 5. Post-Commit Supabase Auth (GoTrue) Synchronization
+    // IMPORTANT BOUNDARY SPECIFICATION:
+    // - The database transaction inside admin_delete_volunteer_account has ALREADY committed
+    //   atomically, having deleted auth.users and cascaded to public.profiles and dependents.
+    // - This subsequent call to adminClient.auth.admin.deleteUser is a post-commit synchronization
+    //   step that does NOT participate in the PostgreSQL transaction.
+    // - Because PostgreSQL already deleted the user from auth.users, GoTrue will return HTTP 404
+    //   ("User not found"). Receiving 404 is the expected, normal confirmation that the user is absent.
+    // - If GoTrue returns any other status (e.g. network failure), we log an operational warning
+    //   so administrators/operators have visibility, without failing the committed database operation.
+    let authSyncCompleted = false;
+    let authSyncNotice: string | null = null;
     try {
-      await adminClient.from("audit_logs").insert({
-        actor_id: callingUser.id,
-        action: "ADMIN_USER_DELETED",
-        notes: `Administrator deleted user ${targetUserId} (${targetProfile?.role || "user"}). Removed ${referralIds.length} referral submission(s).`,
-      });
-    } catch {
-      // Non-fatal: do not fail user deletion if audit logging fails
-    }
-
-    // --------------------------------------------------------------------------
-    // 9. VERIFY POST-DELETION STATE
-    // --------------------------------------------------------------------------
-    const { data: verifyProfile } = await adminClient
-      .from("profiles")
-      .select("id")
-      .eq("id", targetUserId)
-      .maybeSingle();
-
-    const { count: remainingRefs } = await adminClient
-      .from("referrals")
-      .select("id", { count: "exact", head: true })
-      .eq("volunteer_id", targetUserId);
-
-    if (verifyProfile || (remainingRefs || 0) > 0) {
-      return NextResponse.json(
-        {
-          error: "Verification failed: User records or referrals were still detected after deletion.",
-        },
-        { status: 500 }
-      );
+      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(targetUserId);
+      if (
+        !deleteAuthError ||
+        deleteAuthError.message?.toLowerCase().includes("user not found") ||
+        (deleteAuthError as { status?: number }).status === 404
+      ) {
+        authSyncCompleted = true;
+      } else {
+        authSyncNotice = `GoTrue Auth synchronization returned unexpected status: ${deleteAuthError.message}`;
+        console.warn(`[admin/users/delete] User ${targetUserId} deleted from DB, but GoTrue sync returned:`, deleteAuthError);
+      }
+    } catch (syncErr: unknown) {
+      const syncMsg = syncErr instanceof Error ? syncErr.message : "Network/daemon error";
+      authSyncNotice = `GoTrue Auth synchronization network error: ${syncMsg}`;
+      console.warn(`[admin/users/delete] GoTrue sync network error for user ${targetUserId}:`, syncErr);
     }
 
     return NextResponse.json({
       success: true,
-      message: `User ${targetProfile?.full_name || targetUserId} was deleted successfully.`,
-      deletedReferralCount: referralIds.length,
-      authDeleted,
+      message:
+        rpcResult.message ||
+        `User ${rpcResult.target_full_name || targetUserId} was deleted successfully.`,
+      deletedReferralCount: rpcResult.deleted_referral_count ?? 0,
+      authDeleted: authSyncCompleted,
+      ...(authSyncNotice ? { authSyncNotice } : {}),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";

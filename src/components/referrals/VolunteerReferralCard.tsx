@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import QRCode from "qrcode";
 import { Copy, Check, QrCode, Share2, Sparkles, Download, Eye, Users, CheckCircle2, TrendingUp, Info, X } from "lucide-react";
+import { getCanonicalReferralUrl } from "@/lib/utils";
 
 interface VolunteerReferralCardProps {
   referralCode: string;
@@ -29,7 +30,6 @@ export function VolunteerReferralCard({
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
-  const [origin, setOrigin] = useState("");
   const [mounted, setMounted] = useState(false);
 
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
@@ -40,12 +40,9 @@ export function VolunteerReferralCard({
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
   }, []);
 
-  const referralUrl = `${origin}/r/${referralCode}`;
+  const referralUrl = getCanonicalReferralUrl(referralCode);
 
   // Generate QR code data URL when modal opens
   useEffect(() => {
@@ -70,21 +67,14 @@ export function VolunteerReferralCard({
     // Capture current scroll offset
     const scrollY = window.scrollY;
 
-    const originalBodyPosition = document.body.style.position;
-    const originalBodyTop = document.body.style.top;
-    const originalBodyWidth = document.body.style.width;
     const originalBodyOverflow = document.body.style.overflow;
     const originalHtmlOverflow = document.documentElement.style.overflow;
-    const originalBodyTouchAction = document.body.style.touchAction;
 
-    // Fixed position and overflow lock prevent underlying page scrolling on Android Chrome & iOS Safari
-    // Note: touchAction is set to 'pan-y pinch-zoom' to allow dialog scrolling & pinch-to-zoom across ancestor intersection
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
+    // Lock background scrolling by setting overflow hidden on documentElement and body
+    // We do NOT set body position: fixed or negative top offset, which would shift the document
+    // and displace fixed-position portaled modals on physical mobile browsers.
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
-    document.body.style.touchAction = "pan-y pinch-zoom";
 
     // Non-passive touchmove prevention to guarantee mobile browsers cannot pan background
     const backdrop = backdropRef.current;
@@ -145,12 +135,8 @@ export function VolunteerReferralCard({
         backdrop.removeEventListener("touchmove", handleTouchMove);
       }
 
-      document.body.style.position = originalBodyPosition;
-      document.body.style.top = originalBodyTop;
-      document.body.style.width = originalBodyWidth;
       document.body.style.overflow = originalBodyOverflow;
       document.documentElement.style.overflow = originalHtmlOverflow;
-      document.body.style.touchAction = originalBodyTouchAction;
 
       // Instantly restore scroll position by temporarily overriding global smooth scrolling
       const originalHtmlScrollBehavior = document.documentElement.style.scrollBehavior;
@@ -377,7 +363,7 @@ export function VolunteerReferralCard({
               setQrModalOpen(false);
             }
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150 touch-pan-y touch-pinch-zoom"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150 touch-pan-y touch-pinch-zoom w-screen h-screen h-[100dvh]"
           style={{
             touchAction: "pan-y pinch-zoom",
             paddingTop: "max(0.75rem, env(safe-area-inset-top, 0.75rem))",

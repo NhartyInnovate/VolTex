@@ -102,7 +102,7 @@ export const PROMOTIONAL_TEMPLATES = [
     channel: "WhatsApp Groups / Broadcasts",
     title: "Community & Network Broadcast",
     content: (_name: string, url: string) =>
-      `Join us at TEDxGwarinpa! 🚀\n\nStep into a room filled with transformative ideas, world-class speakers, and high-impact networking.\n\nSecure your official delegate ticket now on Meeteor:\n\n${url}\n\nSeats are limited, so reserve yours today!`,
+      `Join us at TEDxGwarinpa! 🚀\n\nStep into a room filled with transformative ideas, world-class speakers, and high-impact networking.\n\nSecure your official delegate ticket now:\n\n${url}\n\nSeats are limited, so reserve yours today!`,
   },
   {
     id: "social-caption",

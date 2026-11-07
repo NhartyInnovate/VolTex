@@ -34,6 +34,39 @@ export function formatDate(isoString: string): string {
 
 
 /**
+ * Resolves the canonical volunteer referral URL.
+ * - In production and Vercel preview environments, canonical links must strictly point to
+ *   https://voltex.nkaylabs.com/r/<code-here> so shared links never leak ephemeral preview domains.
+ * - In local development (localhost, 127.0.0.1, or local LAN IP e.g. 192.168.x.x), it uses
+ *   the active local origin so physical-device LAN QA functions seamlessly.
+ */
+export function getCanonicalReferralUrl(referralCode: string): string {
+  if (!referralCode || !referralCode.trim()) return "";
+  const cleanCode = referralCode.trim();
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    const isLocalDev =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.startsWith("192.168.") ||
+      host.startsWith("10.") ||
+      host.endsWith(".local");
+
+    if (isLocalDev) {
+      return `${window.location.origin}/r/${cleanCode}`;
+    }
+  }
+
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl && !envUrl.includes("localhost")) {
+    return `${envUrl.trim().replace(/\/+$/, "")}/r/${cleanCode}`;
+  }
+
+  return `https://voltex.nkaylabs.com/r/${cleanCode}`;
+}
+
+/**
  * Returns the base application URL configured via NEXT_PUBLIC_APP_URL,
  * with trailing slash removed.
  * In production browser environments, window.location.origin is preferred

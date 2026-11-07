@@ -14,7 +14,7 @@ import {
 } from "@/config/constants";
 import { calculateVolunteerSummary } from "@/lib/scoring";
 import { ReferralRecord, ScoringConfig, UserProfile, LeaderboardEntry } from "@/types";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, getCanonicalReferralUrl } from "@/lib/utils";
 import { triggerConfetti } from "@/lib/confetti";
 import { AnimatedLeaderboard } from "@/components/AnimatedLeaderboard";
 import { LoadingSpinner, FullPageLoader } from "@/components/LoadingSpinner";
@@ -74,6 +74,10 @@ function VolunteerDashboardContent() {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  const referralUrl = profile?.referralCode
+    ? getCanonicalReferralUrl(profile.referralCode)
+    : "";
 
   // Tour Steps Configuration
   const tourSteps: TourStep[] = useMemo(
@@ -955,12 +959,22 @@ function VolunteerDashboardContent() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PROMOTIONAL_TEMPLATES.map((tpl) => {
-              const compiledMessage = tpl.content(
-                profile.fullName,
-                CONFERENCE_CONFIG.ticketUrl
-              );
+          {loading ? (
+            <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#111114] flex items-center justify-center gap-2 text-xs text-zinc-500">
+              <LoadingSpinner size="sm" label="Loading promotional templates" />
+              <span>Loading volunteer profile and referral links...</span>
+            </div>
+          ) : !profile?.referralCode ? (
+            <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 text-xs text-amber-800 dark:text-amber-300">
+              Your personal referral code is being assigned. Please refresh or contact your team lead to access personalized sharing templates.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {PROMOTIONAL_TEMPLATES.map((tpl) => {
+                const compiledMessage = tpl.content(
+                  profile.fullName,
+                  referralUrl
+                );
               const isCopied = copiedId === tpl.id;
 
               return (
@@ -998,7 +1012,8 @@ function VolunteerDashboardContent() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

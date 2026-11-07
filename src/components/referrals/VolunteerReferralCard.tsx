@@ -1,9 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "qrcode";
-import { Copy, Check, QrCode, Share2, Sparkles, Download, Eye, Users, CheckCircle2, TrendingUp, Info } from "lucide-react";
+import { Copy, Check, QrCode, Share2, Sparkles, Download, Eye, Users, CheckCircle2, TrendingUp, Info, X } from "lucide-react";
+import { getCanonicalReferralUrl } from "@/lib/utils";
 
 interface VolunteerReferralCardProps {
   referralCode: string;
@@ -28,16 +30,19 @@ export function VolunteerReferralCard({
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  const [origin, setOrigin] = useState("");
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const prevQrModalOpenRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
+    setMounted(true);
   }, []);
 
-  const referralUrl = `${origin}/r/${referralCode}`;
+  const referralUrl = getCanonicalReferralUrl(referralCode);
 
   // Generate QR code data URL when modal opens
   useEffect(() => {
@@ -54,6 +59,150 @@ export function VolunteerReferralCard({
         .catch((err) => console.error("QR generation error:", err));
     }
   }, [qrModalOpen, referralUrl]);
+
+  // Background scroll locking on mobile (Android/iOS) and desktop
+  useEffect(() => {
+    if (!qrModalOpen) return;
+
+    // Capture current scroll offset
+    const scrollY = window.scrollY;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+
+    // Lock background scrolling by setting overflow hidden on documentElement and body
+    // We do NOT set body position: fixed or negative top offset, which would shift the document
+    // and displace fixed-position portaled modals on physical mobile browsers.
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    // Non-passive touchmove prevention to guarantee mobile browsers cannot pan background
+    const backdrop = backdropRef.current;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      // Allow multi-finger gestures (browser pinch-to-zoom)
+      if (e.touches.length > 1) {
+        return;
+      }
+
+      const modal = modalRef.current;
+      // If touch is outside the modal dialog (on backdrop), prevent dragging
+      if (!modal || !modal.contains(e.target as Node)) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // If modal content does not overflow vertically, prevent dragging
+      if (modal.scrollHeight <= modal.clientHeight) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // If modal content is scrollable, prevent overscroll rubber-banding at edges
+      const currentY = e.touches[0].clientY;
+      const isDraggingDown = currentY > touchStartY;
+      const isDraggingUp = currentY < touchStartY;
+
+      const isAtTop = modal.scrollTop <= 0;
+      const isAtBottom = modal.scrollTop + modal.clientHeight >= modal.scrollHeight - 1;
+
+      if ((isAtTop && isDraggingDown) || (isAtBottom && isDraggingUp)) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    if (backdrop) {
+      backdrop.addEventListener("touchstart", handleTouchStart, { passive: true });
+      backdrop.addEventListener("touchmove", handleTouchMove, { passive: false });
+    }
+
+    return () => {
+      if (backdrop) {
+        backdrop.removeEventListener("touchstart", handleTouchStart);
+        backdrop.removeEventListener("touchmove", handleTouchMove);
+      }
+
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+
+      // Instantly restore scroll position by temporarily overriding global smooth scrolling
+      const originalHtmlScrollBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, scrollY);
+      document.documentElement.style.scrollBehavior = originalHtmlScrollBehavior;
+    };
+  }, [qrModalOpen]);
+
+  // Handle Escape key and trap focus within modal dialog
+  useEffect(() => {
+    if (!qrModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setQrModalOpen(false);
+        return;
+      }
+
+      if (e.key === "Tab" && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [qrModalOpen]);
+
+  // Focus management: initial focus on open and return to trigger button on close
+  useEffect(() => {
+    if (qrModalOpen) {
+      const timer = setTimeout(() => {
+        if (closeButtonRef.current) {
+          closeButtonRef.current.focus();
+        } else if (modalRef.current) {
+          modalRef.current.focus();
+        }
+      }, 50);
+      prevQrModalOpenRef.current = true;
+      return () => clearTimeout(timer);
+    } else {
+      // Only restore focus if the modal transitioned from open to closed (prevent initial mount auto-focus)
+      if (prevQrModalOpenRef.current && triggerButtonRef.current) {
+        triggerButtonRef.current.focus();
+      }
+      prevQrModalOpenRef.current = false;
+    }
+  }, [qrModalOpen]);
 
   // Fetch volunteer stats via API or RPC
   useEffect(() => {
@@ -108,8 +257,9 @@ export function VolunteerReferralCard({
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
+            ref={triggerButtonRef}
             onClick={() => setQrModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/40"
           >
             <QrCode className="w-4 h-4" />
             <span>Show QR Code</span>
@@ -124,9 +274,9 @@ export function VolunteerReferralCard({
           <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             Your Referral Code
           </span>
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-xl font-black text-red-600 dark:text-red-400 tracking-wider">
-              {referralCode || "PENDING"}
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-2xl font-black text-red-600 dark:text-red-400 tracking-wider">
+              {referralCode}
             </span>
             <button
               onClick={() => copyToClipboard(referralCode, false)}
@@ -136,62 +286,57 @@ export function VolunteerReferralCard({
               {copiedCode ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
+          <span className="text-[10px] text-zinc-400">Unique identifier linked to your volunteer profile</span>
         </div>
 
-        {/* Shareable Link Box */}
+        {/* Full Link Box */}
         <div className="md:col-span-2 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-750 rounded-xl p-4 flex flex-col justify-between space-y-3">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Direct Buyer Landing Link
+            Pre-Purchase Landing Link
           </span>
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-mono text-xs text-zinc-700 dark:text-zinc-300 truncate">
-              {referralUrl || `/r/${referralCode}`}
-            </span>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={referralUrl}
+              className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-700 dark:text-zinc-300 select-all"
+            />
             <button
               onClick={() => copyToClipboard(referralUrl, true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-medium transition-colors"
             >
-              {copiedLink ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Link</span>
-                </>
-              )}
+              {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedLink ? "Copied" : "Copy Link"}</span>
             </button>
           </div>
+          <span className="text-[10px] text-zinc-400">Direct buyers to register here before completing their ticket order on Meeteor</span>
         </div>
       </div>
 
-      {/* Telemetry & Lead Funnel Stats */}
+      {/* Referral Engagement Telemetry Section */}
       {stats && (
-        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-3">
+        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-              Referral Activity (Last 30 Days)
-            </h3>
-            <span className="text-[11px] text-zinc-400 flex items-center gap-1">
-              <Info className="w-3 h-3" />
-              Clicks do not award points; points derive from verified approved tickets.
+            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
+              Engagement & Conversion Telemetry
+            </span>
+            <span className="text-[10px] text-zinc-400">
+              Direct Link & QR Visits
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Raw Clicks</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Total Requests</span>
               <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{stats.totalRawRequests}</p>
             </div>
             <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Verified Visits</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Tracked Visits</span>
               <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{stats.totalTrackedVisits}</p>
             </div>
             <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Captured Leads</span>
-              <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">{stats.cohortLeadsCaptured}</p>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Buyer Leads</span>
+              <p className="text-lg font-bold text-red-600 dark:text-red-400 mt-0.5">{stats.cohortLeadsCaptured}</p>
             </div>
             <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Converted Leads</span>
@@ -205,53 +350,96 @@ export function VolunteerReferralCard({
         </div>
       )}
 
-      {/* QR Code Modal */}
-      {qrModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-6 text-center space-y-5 shadow-2xl">
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+      {/* QR Code Modal (Portaled directly to document.body, responsive with backdrop scroll locking) */}
+      {qrModalOpen && mounted && createPortal(
+        <div
+          ref={backdropRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="qr-modal-title"
+          aria-describedby="qr-modal-desc"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setQrModalOpen(false);
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 dark:bg-black/80 backdrop-blur-sm overscroll-contain animate-in fade-in duration-150 touch-pan-y touch-pinch-zoom w-screen h-screen h-[100dvh]"
+          style={{
+            touchAction: "pan-y pinch-zoom",
+            paddingTop: "max(0.75rem, env(safe-area-inset-top, 0.75rem))",
+            paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0.75rem))",
+            paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0.75rem))",
+            paddingRight: "max(0.75rem, env(safe-area-inset-right, 0.75rem))",
+          }}
+        >
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-4 sm:p-6 text-center space-y-4 sm:space-y-5 shadow-2xl relative max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-150 focus:outline-none"
+            style={{
+              touchAction: "pan-y pinch-zoom",
+            }}
+          >
+            {/* Top-right close button */}
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={() => setQrModalOpen(false)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/40"
+              aria-label="Close QR code dialog"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="space-y-1 pt-1 sm:pt-0 pr-6 sm:pr-0">
+              <h3 id="qr-modal-title" className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white">
                 Scan to Register Referral
               </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p id="qr-modal-desc" className="text-xs text-zinc-500 dark:text-zinc-400">
                 Attendees can scan this QR code with their mobile phone camera before purchasing.
               </p>
             </div>
 
-            <div className="p-4 bg-white rounded-xl shadow-inner inline-block mx-auto border border-zinc-200">
+            <div className="p-3 sm:p-4 bg-white rounded-xl shadow-inner inline-block mx-auto border border-zinc-200">
               {qrDataUrl ? (
-                <img src={qrDataUrl} alt="Referral QR Code" className="w-56 h-56 mx-auto" />
+                <img
+                  src={qrDataUrl}
+                  alt={`Referral QR Code for ${referralCode}`}
+                  className="w-44 h-44 xs:w-48 xs:h-48 sm:w-56 sm:h-56 max-w-full aspect-square mx-auto object-contain"
+                />
               ) : (
-                <div className="w-56 h-56 flex items-center justify-center text-zinc-400 text-xs">
+                <div className="w-44 h-44 sm:w-56 sm:h-56 flex items-center justify-center text-zinc-400 text-xs">
                   Generating QR code...
                 </div>
               )}
             </div>
 
             <div className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
-              Code: <strong className="text-red-600 dark:text-red-400">{referralCode}</strong>
+              Code: <strong className="text-red-600 dark:text-red-400 text-sm font-bold tracking-wider">{referralCode}</strong>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-1">
               {qrDataUrl && (
                 <a
                   href={qrDataUrl}
                   download={`VolTex-QR-${referralCode}.png`}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-semibold transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 sm:px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-semibold transition-colors shadow-sm active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-500/40"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download QR</span>
                 </a>
               )}
               <button
+                type="button"
                 onClick={() => setQrModalOpen(false)}
-                className="py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors"
+                className="py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-500/40"
               >
                 Close
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

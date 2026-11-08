@@ -132,7 +132,7 @@ console.log("\n[Test 3] Callback Flow Routing Invariants");
       if (type === "recovery") {
         defaultTarget = "/auth/reset-password";
       } else if (type === "signup" || type === "email") {
-        defaultTarget = "/auth/login?verified=true";
+        defaultTarget = "/dashboard";
       }
       const safeNext = getSafeRedirectPath(next, defaultTarget);
       return { flow: "token_hash", destination: safeNext, type };
@@ -153,7 +153,7 @@ console.log("\n[Test 3] Callback Flow Routing Invariants");
     searchParams: new URLSearchParams("token_hash=sample-hash&type=email"),
   });
   assert.equal(hashSignupResult.flow, "token_hash");
-  assert.equal(hashSignupResult.destination, "/auth/login?verified=true");
+  assert.equal(hashSignupResult.destination, "/dashboard");
 
   // Case C: Token Hash recovery flow (Password reset)
   const hashRecoveryResult = simulateCallbackRouting({
@@ -326,6 +326,278 @@ console.log("\n[Test 4] Supabase Auth Error Mapping & Sanitization");
   console.log("✔ Supabase Auth error mapping & sanitization tests passed.");
 }
 
+// 5. Test Extended Auth Callback Handler Lifecycle & Verification Invariants
+console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cross-Device, Cookie Propagation)");
+{
+  // Simulated Next.js Response Cookie Store
+  class MockResponseCookies {
+    constructor() {
+      this._cookies = new Map();
+    }
+    set(name, value, options = {}) {
+      this._cookies.set(name, { name, value, ...options });
+    }
+    getAll() {
+      return Array.from(this._cookies.values());
+    }
+  }
+
+  class MockResponse {
+    constructor(destinationUrl) {
+      this.destinationUrl = destinationUrl;
+      this.cookies = new MockResponseCookies();
+    }
+  }
+
+  // Full simulation matching src/app/auth/callback/route.ts
+  async function executeCallbackHandler({
+    searchParamsString,
+    mockExchangeResult = { error: null },
+    mockVerifyResult = { error: null },
+    origin = "https://voltex.nkaylabs.com",
+  }) {
+    const searchParams = new URLSearchParams(searchParamsString);
+    const token_hash = searchParams.get("token_hash");
+    const rawType = searchParams.get("type");
+    const type = rawType || (token_hash ? "email" : null);
+    const rawNext = searchParams.get("next");
+    const code = searchParams.get("code");
+    const error = searchParams.get("error");
+    const error_description = searchParams.get("error_description");
+
+    const baseUrl = origin;
+
+    // Capture cookie calls
+    const capturedSetCookies = [];
+    const response = new MockResponse();
+
+    const mockSupabase = {
+      auth: {
+        exchangeCodeForSession: async (authCode) => {
+          if (!mockExchangeResult.error) {
+            response.cookies.set("sb-access-token", "mock-access-token", { path: "/", httpOnly: true });
+            response.cookies.set("sb-refresh-token", "mock-refresh-token", { path: "/", httpOnly: true });
+          }
+          return mockExchangeResult;
+        },
+        verifyOtp: async ({ type: otpType, token_hash: th }) => {
+          if (!mockVerifyResult.error && mockVerifyResult.data?.session) {
+            response.cookies.set("sb-access-token", "mock-access-token", { path: "/", httpOnly: true });
+            response.cookies.set("sb-refresh-token", "mock-refresh-token", { path: "/", httpOnly: true });
+          }
+          return mockVerifyResult;
+        },
+      },
+    };
+
+    // 1. Explicit error
+    if (error || error_description) {
+      const errorParam = encodeURIComponent(
+        error_description || error || "Authentication link invalid or expired."
+      );
+      return { destination: `${baseUrl}/auth/login?error=${errorParam}`, cookies: [] };
+    }
+
+    // 2. Flow A: PKCE
+    if (code) {
+      const { error: exchangeError } = await mockSupabase.auth.exchangeCodeForSession(code);
+      if (!exchangeError) {
+        const safeNext = getSafeRedirectPath(rawNext, "/dashboard");
+        const redir = new MockResponse(new URL(safeNext, baseUrl).toString());
+        response.cookies.getAll().forEach((c) => redir.cookies.set(c.name, c.value, c));
+        return { destination: redir.destinationUrl, cookies: redir.cookies.getAll() };
+      }
+
+      const isVerifierMissing = Boolean(
+        exchangeError.message?.toLowerCase().includes("code verifier") ||
+        (exchangeError.code && exchangeError.code === "pkce_code_verifier_not_found")
+      );
+
+      if (isVerifierMissing) {
+        const friendlyMsg = encodeURIComponent(
+          "Verification was opened in a different browser or app than where registration started. Please sign in with your email and password below."
+        );
+        return { destination: `${baseUrl}/auth/login?error=${friendlyMsg}`, cookies: [] };
+      }
+
+      const errorMsg = encodeURIComponent(
+        exchangeError.message || "Invalid or expired authorization code."
+      );
+      return { destination: `${baseUrl}/auth/login?error=${errorMsg}`, cookies: [] };
+    }
+
+    // 3. Flow B: Token Hash
+    if (token_hash && type) {
+      const otpType = type === "signup" ? "email" : type;
+      let { data: verifyData, error: verifyError } = await mockSupabase.auth.verifyOtp({
+        type: otpType,
+        token_hash,
+      });
+
+      if (verifyError && type === "signup") {
+        const retry = await mockSupabase.auth.verifyOtp({
+          type: "signup",
+          token_hash,
+        });
+        if (!retry.error) {
+          verifyError = null;
+          verifyData = retry.data;
+        }
+      }
+
+      if (!verifyError) {
+        let defaultTarget = "/dashboard";
+        if (type === "recovery") {
+          defaultTarget = "/auth/reset-password";
+        } else if (type === "signup" || type === "email") {
+          defaultTarget = verifyData?.session ? "/dashboard" : "/auth/login?verified=true";
+        }
+
+        const safeNext = getSafeRedirectPath(rawNext, defaultTarget);
+        const redir = new MockResponse(new URL(safeNext, baseUrl).toString());
+        response.cookies.getAll().forEach((c) => redir.cookies.set(c.name, c.value, c));
+        return { destination: redir.destinationUrl, cookies: redir.cookies.getAll() };
+      }
+
+      const errorMsg = encodeURIComponent(
+        verifyError.message || "Invalid or expired verification link."
+      );
+      return { destination: `${baseUrl}/auth/login?error=${errorMsg}&error_type=${type}`, cookies: [] };
+    }
+
+    return { destination: `${baseUrl}/auth/login?error=Invalid+or+missing+verification+token`, cookies: [] };
+  }
+
+  // Subtest 5a: Valid token_hash signup verification with session (Canonical 'email' type) -> /dashboard
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=valid-otp-hash&type=email",
+      mockVerifyResult: { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null },
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    assert(res.cookies.some((c) => c.name === "sb-access-token"), "Must propagate session cookies");
+    console.log("  ✔ 5a. Valid token_hash with session routes directly to /dashboard with session cookies");
+  }
+
+  // Subtest 5b: Valid token_hash signup verification WITHOUT session -> safe fallback to /auth/login?verified=true
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=valid-otp-hash&type=email",
+      mockVerifyResult: { data: { session: null, user: { id: "u1" } }, error: null },
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/login?verified=true");
+    assert.equal(res.cookies.length, 0, "No session cookies when session is null");
+    console.log("  ✔ 5b. Valid token_hash without session safely falls back to /auth/login?verified=true");
+  }
+
+  // Subtest 5c: Valid token_hash signup verification (Legacy 'signup' type mapped to 'email' with session)
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=valid-otp-hash&type=signup",
+      mockVerifyResult: { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null },
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    console.log("  ✔ 5c. Valid token_hash (type=signup) automatically maps to canonical email OTP and routes to /dashboard");
+  }
+
+  // Subtest 5d: Valid token_hash without explicit type (Defaults to 'email' with session)
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=valid-otp-hash",
+      mockVerifyResult: { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null },
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    console.log("  ✔ 5d. Valid token_hash without explicit type defaults to email OTP and routes to /dashboard");
+  }
+
+  // Subtest 5e: Successful PKCE exchange
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "code=valid-pkce-code",
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    assert.equal(res.cookies.length, 2, "Must propagate access and refresh session cookies");
+    console.log("  ✔ 5e. Successful PKCE exchange routes to /dashboard and sets all session cookies");
+  }
+
+  // Subtest 5f: Missing PKCE code verifier (Cross-browser / in-app browser scenario)
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "code=cross-device-code",
+      mockExchangeResult: {
+        error: {
+          name: "AuthPKCECodeVerifierMissingError",
+          code: "pkce_code_verifier_not_found",
+          message: "PKCE code verifier not found in storage.",
+        },
+      },
+    });
+    assert(res.destination.includes("/auth/login?error="), "Must redirect to login with error explanation");
+    assert(res.destination.includes("different%20browser%20or%20app"), "Must explain cross-device condition");
+    assert(!res.destination.includes("verified=true"), "MUST NOT treat missing verifier as proof of verification");
+    assert.equal(res.cookies.length, 0, "Must not set session cookies when exchange failed");
+    console.log("  ✔ 5f. Missing PKCE verifier handled gracefully without claiming unproven verified=true");
+  }
+
+  // Subtest 5g: Expired or invalid verification token
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=expired-token&type=email",
+      mockVerifyResult: {
+        error: {
+          name: "AuthApiError",
+          message: "Email link is invalid or has expired",
+        },
+      },
+    });
+    assert(res.destination.includes("/auth/login?error=Email%20link%20is%20invalid%20or%20has%20expired"), "Must display Supabase error");
+    assert(res.destination.includes("error_type=email"), "Must include error_type parameter");
+    console.log("  ✔ 5g. Expired verification token routes to /auth/login with descriptive error");
+  }
+
+  // Subtest 5h: Invalid authorization code
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "code=invalid-code",
+      mockExchangeResult: {
+        error: {
+          name: "AuthApiError",
+          message: "Invalid or expired authorization code.",
+        },
+      },
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/login?error=Invalid%20or%20expired%20authorization%20code.");
+    console.log("  ✔ 5h. Invalid authorization code routes to /auth/login with error message");
+  }
+
+  // Subtest 5i: Unsafe open redirect attempts blocked
+  {
+    const maliciousCodes = [
+      "https://attacker.com",
+      "http://attacker.com",
+      "//evil.com",
+      "/\\evil.com",
+      "javascript:alert(1)",
+    ];
+    for (const evilUrl of maliciousCodes) {
+      const res = await executeCallbackHandler({
+        searchParamsString: `code=valid-code&next=${encodeURIComponent(evilUrl)}`,
+      });
+      assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard", `Must reject evil URL ${evilUrl}`);
+    }
+    console.log("  ✔ 5i. Unsafe redirect attempts blocked; always sanitized to internal routes");
+  }
+
+  // Subtest 5j: Existing password recovery behavior preserved
+  {
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=valid-recovery-hash&type=recovery",
+    });
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/reset-password");
+    console.log("  ✔ 5j. Password recovery flow preserved; routes to /auth/reset-password");
+  }
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL AUTH CALLBACK & ERROR TESTS PASSED SUCCESSFULLY (4/4)");
+console.log("✔ ALL AUTH CALLBACK & ERROR TESTS PASSED SUCCESSFULLY (5/5)");
 console.log("=======================================================\n");

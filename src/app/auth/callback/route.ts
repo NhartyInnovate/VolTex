@@ -12,7 +12,8 @@ interface CookieToSet {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
-  const type = searchParams.get("type") as EmailOtpType | null;
+  const rawType = searchParams.get("type");
+  const type = (rawType as EmailOtpType | null) || (token_hash ? "email" : null);
   const rawNext = searchParams.get("next");
   const code = searchParams.get("code");
   const error = searchParams.get("error");
@@ -73,6 +74,23 @@ export async function GET(request: NextRequest) {
       return redirectResponse;
     }
 
+    // Check if error is specifically due to missing PKCE code verifier in storage
+    const isVerifierMissing =
+      Boolean(
+        exchangeError.message?.toLowerCase().includes("code verifier") ||
+        ("code" in exchangeError && exchangeError.code === "pkce_code_verifier_not_found")
+      );
+
+    if (isVerifierMissing) {
+      // Graceful handling: The link was opened in a different browser/app than where registration started.
+      // Do NOT treat a missing verifier as proof that an email has been verified.
+      // Redirect to login with a clear instruction to sign in rather than a cryptic runtime error.
+      const friendlyMsg = encodeURIComponent(
+        "Verification was opened in a different browser or app than where registration started. Please sign in with your email and password below."
+      );
+      return NextResponse.redirect(`${baseUrl}/auth/login?error=${friendlyMsg}`);
+    }
+
     const errorMsg = encodeURIComponent(
       exchangeError.message || "Invalid or expired authorization code."
     );
@@ -81,17 +99,35 @@ export async function GET(request: NextRequest) {
 
   // Flow B: Token Hash OTP Verification (Magic link, email signup, token recovery)
   if (token_hash && type) {
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      type,
+    // In Supabase Auth, 'email' is the canonical type for email signup verification;
+    // 'signup' is accepted as a legacy alias. Map 'signup' to 'email'.
+    const otpType: EmailOtpType = (type === "signup" ? "email" : type) as EmailOtpType;
+
+    let { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      type: otpType,
       token_hash,
     });
+
+    // Fallback: If 'email' was mapped from 'signup' and failed with an unexpected type error, retry with 'signup'
+    if (verifyError && type === "signup") {
+      const retry = await supabase.auth.verifyOtp({
+        type: "signup" as EmailOtpType,
+        token_hash,
+      });
+      if (!retry.error) {
+        verifyError = null;
+        verifyData = retry.data;
+      }
+    }
 
     if (!verifyError) {
       let defaultTarget = "/dashboard";
       if (type === "recovery") {
         defaultTarget = "/auth/reset-password";
       } else if (type === "signup" || type === "email") {
-        defaultTarget = "/auth/login?verified=true";
+        // Direct volunteer straight to /dashboard when session is established;
+        // fallback safely to /auth/login?verified=true if verification succeeded without session
+        defaultTarget = verifyData?.session ? "/dashboard" : "/auth/login?verified=true";
       }
 
       const safeNext = getSafeRedirectPath(rawNext, defaultTarget);

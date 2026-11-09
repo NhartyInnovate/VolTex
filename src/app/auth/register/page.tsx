@@ -254,7 +254,7 @@ export default function RegisterPage() {
     try {
       const supabase = createClient();
       const appUrl = getAppUrl();
-      const redirectUrl = `${appUrl}/auth/callback?next=/dashboard`;
+      const redirectUrl = `${appUrl}/auth/callback`;
 
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
@@ -328,14 +328,9 @@ export default function RegisterPage() {
                 </h2>
                 <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-xs">
                   {needsEmailConfirmation
-                    ? "A verification link has been sent to your email address. Please click the link to confirm your account and sign in."
+                    ? "We've sent a verification link to your email address. Please check your inbox (and spam folder) and click the link to verify your account before signing in."
                     : "You're now registered and part of the team helping bring more people to TEDxGwarinpa."}
                 </p>
-                {needsEmailConfirmation && (
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal bg-zinc-50 dark:bg-zinc-900/60 p-2.5 rounded border border-zinc-200 dark:border-zinc-800/60 mt-2">
-                    💡 <strong>Tip:</strong> If using a mobile device, open the confirmation email in the same browser app to ensure instant automatic verification.
-                  </p>
-                )}
               </div>
 
               <div className="text-[11px] text-zinc-500 pt-1 border-t border-zinc-200 dark:border-zinc-800/60">

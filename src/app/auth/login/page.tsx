@@ -21,22 +21,30 @@ function LoginForm() {
 
   useEffect(() => {
     // Check for query parameters indicating verification state or errors
-    if (searchParams.get("verified") === "true") {
-      setSuccessNotice("Email verified successfully! You can now sign in to your volunteer account.");
-    }
-    if (searchParams.get("password_reset") === "true") {
-      setSuccessNotice("Your password has been successfully reset. Please sign in with your new password.");
-    }
     const queryError = searchParams.get("error");
+    const isVerified = searchParams.get("verified") === "true";
+    const isPasswordReset = searchParams.get("password_reset") === "true";
+
     if (queryError) {
       const decoded = decodeURIComponent(queryError);
-      if (decoded.includes("PKCE code verifier not found in storage") || decoded.includes("code verifier")) {
+      if (
+        decoded.includes("PKCE code verifier not found in storage") ||
+        decoded.includes("code verifier") ||
+        decoded.includes("different browser or app")
+      ) {
         setErrorMessage(
-          "Verification link was opened in a different browser or app than where registration started. Please open the link in the same browser app or try signing in below."
+          "Verification link was opened in a different browser or app than where registration started. Please sign in with your email and password below."
         );
       } else {
         setErrorMessage(decoded);
       }
+      setSuccessNotice(null);
+    } else if (isVerified) {
+      setSuccessNotice("Email verified successfully! You can now sign in to your volunteer account.");
+      setErrorMessage(null);
+    } else if (isPasswordReset) {
+      setSuccessNotice("Your password has been successfully reset. Please sign in with your new password.");
+      setErrorMessage(null);
     }
   }, [searchParams]);
 

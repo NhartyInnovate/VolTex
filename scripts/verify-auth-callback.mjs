@@ -327,7 +327,7 @@ console.log("\n[Test 4] Supabase Auth Error Mapping & Sanitization");
 }
 
 // 5. Test Extended Auth Callback Handler Lifecycle & Verification Invariants
-console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cross-Device, Cookie Propagation)");
+console.log("\n[Test 5] Comprehensive Callback Lifecycle (Signup OTP, Email Magic Link, Alternate Fallback, PKCE, Cookie Propagation)");
 {
   // Simulated Next.js Response Cookie Store
   class MockResponseCookies {
@@ -353,22 +353,20 @@ console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cros
   async function executeCallbackHandler({
     searchParamsString,
     mockExchangeResult = { error: null },
+    // mockVerifyResult can be a function (type, token_hash) => ({ data, error }) or static object
     mockVerifyResult = { error: null },
     origin = "https://voltex.nkaylabs.com",
   }) {
     const searchParams = new URLSearchParams(searchParamsString);
     const token_hash = searchParams.get("token_hash");
     const rawType = searchParams.get("type");
-    const type = rawType || (token_hash ? "email" : null);
+    const type = rawType || (token_hash ? "signup" : null);
     const rawNext = searchParams.get("next");
     const code = searchParams.get("code");
     const error = searchParams.get("error");
     const error_description = searchParams.get("error_description");
 
     const baseUrl = origin;
-
-    // Capture cookie calls
-    const capturedSetCookies = [];
     const response = new MockResponse();
 
     const mockSupabase = {
@@ -381,21 +379,27 @@ console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cros
           return mockExchangeResult;
         },
         verifyOtp: async ({ type: otpType, token_hash: th }) => {
-          if (!mockVerifyResult.error && mockVerifyResult.data?.session) {
+          const result = typeof mockVerifyResult === "function"
+            ? mockVerifyResult(otpType, th)
+            : mockVerifyResult;
+
+          if (!result.error && result.data?.session) {
             response.cookies.set("sb-access-token", "mock-access-token", { path: "/", httpOnly: true });
             response.cookies.set("sb-refresh-token", "mock-refresh-token", { path: "/", httpOnly: true });
           }
-          return mockVerifyResult;
+          return result;
         },
       },
     };
 
     // 1. Explicit error
     if (error || error_description) {
+      const errorCode = searchParams.get("error_code");
       const errorParam = encodeURIComponent(
         error_description || error || "Authentication link invalid or expired."
       );
-      return { destination: `${baseUrl}/auth/login?error=${errorParam}`, cookies: [] };
+      const codeQuery = errorCode ? `&error_code=${encodeURIComponent(errorCode)}` : "";
+      return { destination: `${baseUrl}/auth/login?error=${errorParam}${codeQuery}`, cookies: [] };
     }
 
     // 2. Flow A: PKCE
@@ -428,15 +432,18 @@ console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cros
 
     // 3. Flow B: Token Hash
     if (token_hash && type) {
-      const otpType = type === "signup" ? "email" : type;
+      const primaryType = type;
+      const alternateType =
+        type === "signup" ? "email" : type === "email" ? "signup" : null;
+
       let { data: verifyData, error: verifyError } = await mockSupabase.auth.verifyOtp({
-        type: otpType,
+        type: primaryType,
         token_hash,
       });
 
-      if (verifyError && type === "signup") {
+      if (verifyError && alternateType) {
         const retry = await mockSupabase.auth.verifyOtp({
-          type: "signup",
+          type: alternateType,
           token_hash,
         });
         if (!retry.error) {
@@ -459,68 +466,146 @@ console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cros
         return { destination: redir.destinationUrl, cookies: redir.cookies.getAll() };
       }
 
+      const errorCode =
+        verifyError && "code" in verifyError && typeof verifyError.code === "string"
+          ? verifyError.code
+          : "";
       const errorMsg = encodeURIComponent(
         verifyError.message || "Invalid or expired verification link."
       );
-      return { destination: `${baseUrl}/auth/login?error=${errorMsg}&error_type=${type}`, cookies: [] };
+      const codeQuery = errorCode ? `&error_code=${encodeURIComponent(errorCode)}` : "";
+      return {
+        destination: `${baseUrl}/auth/login?error=${errorMsg}&error_type=${type}${codeQuery}`,
+        cookies: [],
+      };
     }
 
     return { destination: `${baseUrl}/auth/login?error=Invalid+or+missing+verification+token`, cookies: [] };
   }
 
-  // Subtest 5a: Valid token_hash signup verification with session (Canonical 'email' type) -> /dashboard
+  // Subtest 5a: Direct signup OTP verification (type=signup) with session -> /dashboard
   {
+    let invokedType = null;
     const res = await executeCallbackHandler({
-      searchParamsString: "token_hash=valid-otp-hash&type=email",
-      mockVerifyResult: { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null },
+      searchParamsString: "token_hash=valid-otp-hash&type=signup",
+      mockVerifyResult: (type) => {
+        invokedType = type;
+        return { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null };
+      },
     });
+    assert.equal(invokedType, "signup", "Must invoke primary type=signup first");
     assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
     assert(res.cookies.some((c) => c.name === "sb-access-token"), "Must propagate session cookies");
-    console.log("  ✔ 5a. Valid token_hash with session routes directly to /dashboard with session cookies");
+    console.log("  ✔ 5a. Direct signup OTP verification (type=signup) invokes 'signup' and routes to /dashboard with session cookies");
   }
 
-  // Subtest 5b: Valid token_hash signup verification WITHOUT session -> safe fallback to /auth/login?verified=true
+  // Subtest 5b: Email magic link verification (type=email) with session -> /dashboard
+  {
+    let invokedType = null;
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=magic-link-hash&type=email",
+      mockVerifyResult: (type) => {
+        invokedType = type;
+        return { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null };
+      },
+    });
+    assert.equal(invokedType, "email", "Must invoke primary type=email first");
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    assert(res.cookies.some((c) => c.name === "sb-access-token"), "Must propagate session cookies");
+    console.log("  ✔ 5b. Email magic link verification (type=email) invokes 'email' and routes to /dashboard with session cookies");
+  }
+
+  // Subtest 5c: Alternate OTP fallback: type=email in URL, but token is GoTrue signup token
+  {
+    const calls = [];
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=signup-hash-in-email-template&type=email",
+      mockVerifyResult: (type) => {
+        calls.push(type);
+        if (type === "email") {
+          return {
+            data: { user: null, session: null },
+            error: { name: "AuthApiError", message: "Email link is invalid or has expired", code: "otp_expired" },
+          };
+        }
+        if (type === "signup") {
+          return { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null };
+        }
+        return { data: null, error: new Error("Unexpected type") };
+      },
+    });
+    assert.deepEqual(calls, ["email", "signup"], "Must try 'email' first, fail, and retry 'signup'");
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    assert(res.cookies.some((c) => c.name === "sb-access-token"), "Must set cookies after successful retry");
+    console.log("  ✔ 5c. Alternate OTP fallback (type=email -> signup) recovers from template type mismatch");
+  }
+
+  // Subtest 5d: Alternate OTP fallback: type=signup in URL, but token is magic link
+  {
+    const calls = [];
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=magic-hash-in-signup-template&type=signup",
+      mockVerifyResult: (type) => {
+        calls.push(type);
+        if (type === "signup") {
+          return {
+            data: { user: null, session: null },
+            error: { name: "AuthApiError", message: "Email link is invalid or has expired", code: "otp_expired" },
+          };
+        }
+        if (type === "email") {
+          return { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null };
+        }
+        return { data: null, error: new Error("Unexpected type") };
+      },
+    });
+    assert.deepEqual(calls, ["signup", "email"], "Must try 'signup' first, fail, and retry 'email'");
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
+    console.log("  ✔ 5d. Alternate OTP fallback (type=signup -> email) recovers from token mismatch");
+  }
+
+  // Subtest 5e: Strict boundary: Never retry arbitrary types like password recovery
+  {
+    const calls = [];
+    const res = await executeCallbackHandler({
+      searchParamsString: "token_hash=expired-recovery&type=recovery",
+      mockVerifyResult: (type) => {
+        calls.push(type);
+        return {
+          data: { user: null, session: null },
+          error: { name: "AuthApiError", message: "Email link is invalid or has expired", code: "otp_expired" },
+        };
+      },
+    });
+    assert.deepEqual(calls, ["recovery"], "Recovery MUST NOT retry alternate types");
+    assert(res.destination.includes("/auth/login?error="));
+    assert(res.destination.includes("error_code=otp_expired"));
+    assert.equal(res.cookies.length, 0, "No cookies on failure");
+    console.log("  ✔ 5e. Strict boundary: recovery does not attempt alternate retries; no session created");
+  }
+
+  // Subtest 5f: Valid token_hash signup verification WITHOUT session -> safe fallback to /auth/login?verified=true
   {
     const res = await executeCallbackHandler({
-      searchParamsString: "token_hash=valid-otp-hash&type=email",
+      searchParamsString: "token_hash=valid-otp-hash&type=signup",
       mockVerifyResult: { data: { session: null, user: { id: "u1" } }, error: null },
     });
     assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/login?verified=true");
     assert.equal(res.cookies.length, 0, "No session cookies when session is null");
-    console.log("  ✔ 5b. Valid token_hash without session safely falls back to /auth/login?verified=true");
+    console.log("  ✔ 5f. Valid token_hash without session safely falls back to /auth/login?verified=true");
   }
 
-  // Subtest 5c: Valid token_hash signup verification (Legacy 'signup' type mapped to 'email' with session)
-  {
-    const res = await executeCallbackHandler({
-      searchParamsString: "token_hash=valid-otp-hash&type=signup",
-      mockVerifyResult: { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null },
-    });
-    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
-    console.log("  ✔ 5c. Valid token_hash (type=signup) automatically maps to canonical email OTP and routes to /dashboard");
-  }
-
-  // Subtest 5d: Valid token_hash without explicit type (Defaults to 'email' with session)
-  {
-    const res = await executeCallbackHandler({
-      searchParamsString: "token_hash=valid-otp-hash",
-      mockVerifyResult: { data: { session: { access_token: "mock" }, user: { id: "u1" } }, error: null },
-    });
-    assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
-    console.log("  ✔ 5d. Valid token_hash without explicit type defaults to email OTP and routes to /dashboard");
-  }
-
-  // Subtest 5e: Successful PKCE exchange
+  // Subtest 5g: Successful PKCE exchange
   {
     const res = await executeCallbackHandler({
       searchParamsString: "code=valid-pkce-code",
     });
     assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard");
     assert.equal(res.cookies.length, 2, "Must propagate access and refresh session cookies");
-    console.log("  ✔ 5e. Successful PKCE exchange routes to /dashboard and sets all session cookies");
+    console.log("  ✔ 5g. Successful PKCE exchange routes to /dashboard and sets all session cookies");
   }
 
-  // Subtest 5f: Missing PKCE code verifier (Cross-browser / in-app browser scenario)
+  // Subtest 5h: Missing PKCE code verifier (Cross-browser / in-app browser scenario)
   {
     const res = await executeCallbackHandler({
       searchParamsString: "code=cross-device-code",
@@ -536,41 +621,38 @@ console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cros
     assert(res.destination.includes("different%20browser%20or%20app"), "Must explain cross-device condition");
     assert(!res.destination.includes("verified=true"), "MUST NOT treat missing verifier as proof of verification");
     assert.equal(res.cookies.length, 0, "Must not set session cookies when exchange failed");
-    console.log("  ✔ 5f. Missing PKCE verifier handled gracefully without claiming unproven verified=true");
+    console.log("  ✔ 5h. Missing PKCE verifier handled gracefully without claiming unproven verified=true");
   }
 
-  // Subtest 5g: Expired or invalid verification token
+  // Subtest 5i: Expired or already-consumed verification token (Both attempts fail)
   {
     const res = await executeCallbackHandler({
-      searchParamsString: "token_hash=expired-token&type=email",
+      searchParamsString: "token_hash=expired-token&type=signup",
       mockVerifyResult: {
         error: {
           name: "AuthApiError",
           message: "Email link is invalid or has expired",
+          code: "otp_expired",
         },
       },
     });
-    assert(res.destination.includes("/auth/login?error=Email%20link%20is%20invalid%20or%20has%20expired"), "Must display Supabase error");
-    assert(res.destination.includes("error_type=email"), "Must include error_type parameter");
-    console.log("  ✔ 5g. Expired verification token routes to /auth/login with descriptive error");
+    assert(res.destination.includes("error=Email%20link%20is%20invalid%20or%20has%20expired"), "Must pass error");
+    assert(res.destination.includes("error_code=otp_expired"), "Must include error_code parameter");
+    assert.equal(res.cookies.length, 0, "Failed verification must NEVER set session cookies");
+    console.log("  ✔ 5i. Expired/consumed token routes to /auth/login with otp_expired and NO session cookies");
   }
 
-  // Subtest 5h: Invalid authorization code
+  // Subtest 5j: Password recovery flow preserved
   {
     const res = await executeCallbackHandler({
-      searchParamsString: "code=invalid-code",
-      mockExchangeResult: {
-        error: {
-          name: "AuthApiError",
-          message: "Invalid or expired authorization code.",
-        },
-      },
+      searchParamsString: "token_hash=valid-recovery-hash&type=recovery",
+      mockVerifyResult: { data: { session: { access_token: "recov" }, user: { id: "u2" } }, error: null },
     });
-    assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/login?error=Invalid%20or%20expired%20authorization%20code.");
-    console.log("  ✔ 5h. Invalid authorization code routes to /auth/login with error message");
+    assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/reset-password");
+    console.log("  ✔ 5j. Password recovery flow preserved; routes to /auth/reset-password");
   }
 
-  // Subtest 5i: Unsafe open redirect attempts blocked
+  // Subtest 5k: Unsafe open redirect attempts blocked
   {
     const maliciousCodes = [
       "https://attacker.com",
@@ -585,19 +667,78 @@ console.log("\n[Test 5] Comprehensive Callback Lifecycle (PKCE, Token Hash, Cros
       });
       assert.equal(res.destination, "https://voltex.nkaylabs.com/dashboard", `Must reject evil URL ${evilUrl}`);
     }
-    console.log("  ✔ 5i. Unsafe redirect attempts blocked; always sanitized to internal routes");
-  }
-
-  // Subtest 5j: Existing password recovery behavior preserved
-  {
-    const res = await executeCallbackHandler({
-      searchParamsString: "token_hash=valid-recovery-hash&type=recovery",
-    });
-    assert.equal(res.destination, "https://voltex.nkaylabs.com/auth/reset-password");
-    console.log("  ✔ 5j. Password recovery flow preserved; routes to /auth/reset-password");
+    console.log("  ✔ 5k. Unsafe redirect attempts blocked; always sanitized to internal routes");
   }
 }
 
+// 6. Test Login Page Error Message Resolution (resolveLoginErrorMessage)
+console.log("\n[Test 6] Login Page Error Message Resolution & Volunteer Guidance");
+{
+  function resolveLoginErrorMessage(queryError, errorCode) {
+    if (!queryError) return null;
+
+    const decoded = decodeURIComponent(queryError);
+    const lowerDecoded = decoded.toLowerCase();
+    const lowerCode = (errorCode || "").toLowerCase();
+
+    // Expired, already consumed, or invalid verification links
+    if (
+      lowerCode === "otp_expired" ||
+      lowerDecoded.includes("email link is invalid or has expired") ||
+      lowerDecoded.includes("token has expired or is invalid") ||
+      lowerDecoded.includes("invalid or expired verification link") ||
+      lowerDecoded.includes("otp_expired")
+    ) {
+      return "This verification link may have expired or has already been used. If you recently registered, please try signing in with your email and password below.";
+    }
+
+    // Cross-browser or cross-device registration flow (missing PKCE verifier)
+    if (
+      lowerDecoded.includes("pkce code verifier not found in storage") ||
+      lowerDecoded.includes("code verifier") ||
+      lowerDecoded.includes("different browser or app")
+    ) {
+      return "Verification link was opened in a different browser or app than where registration started. Please sign in with your email and password below.";
+    }
+
+    return decoded;
+  }
+
+  // Case 6a: Exact GoTrue error "Email link is invalid or has expired"
+  const msgA = resolveLoginErrorMessage("Email link is invalid or has expired");
+  assert.equal(
+    msgA,
+    "This verification link may have expired or has already been used. If you recently registered, please try signing in with your email and password below.",
+    "Must guide user to sign in without falsely claiming account is verified"
+  );
+  console.log("  ✔ 6a. 'Email link is invalid or has expired' resolves to reassuring sign-in guidance");
+
+  // Case 6b: error_code=otp_expired with custom description
+  const msgB = resolveLoginErrorMessage("Access denied", "otp_expired");
+  assert.equal(
+    msgB,
+    "This verification link may have expired or has already been used. If you recently registered, please try signing in with your email and password below."
+  );
+  console.log("  ✔ 6b. error_code='otp_expired' resolves to reassuring sign-in guidance");
+
+  // Case 6c: Cross-browser PKCE missing verifier error
+  const msgC = resolveLoginErrorMessage("PKCE code verifier not found in storage");
+  assert.equal(
+    msgC,
+    "Verification link was opened in a different browser or app than where registration started. Please sign in with your email and password below."
+  );
+  console.log("  ✔ 6c. Missing PKCE verifier resolves to cross-browser sign-in guidance");
+
+  // Case 6d: Standard unexpected error preserved
+  const msgD = resolveLoginErrorMessage("Invalid credentials");
+  assert.equal(msgD, "Invalid credentials", "Standard error should pass through cleanly");
+  console.log("  ✔ 6d. Standard credentials errors preserved without alteration");
+
+  // Case 6e: Null error returns null
+  assert.equal(resolveLoginErrorMessage(null), null);
+  console.log("  ✔ 6e. Null queryError returns null");
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL AUTH CALLBACK & ERROR TESTS PASSED SUCCESSFULLY (5/5)");
+console.log("✔ ALL AUTH CALLBACK, ERROR & LOGIN TESTS PASSED (6/6)");
 console.log("=======================================================\n");

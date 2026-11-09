@@ -226,3 +226,40 @@ export function getSafeRedirectPath(rawPath?: string | null, defaultFallback: st
   return decoded;
 }
 
+/**
+ * Resolves query error messages into actionable, reassuring guidance for volunteers.
+ * Detects expired/consumed tokens (such as from mobile prefetching or single-use OTPs)
+ * and cross-browser PKCE discrepancies without making false verification claims.
+ */
+export function resolveLoginErrorMessage(
+  queryError: string | null,
+  errorCode?: string | null
+): string | null {
+  if (!queryError) return null;
+
+  const decoded = decodeURIComponent(queryError);
+  const lowerDecoded = decoded.toLowerCase();
+  const lowerCode = (errorCode || "").toLowerCase();
+
+  // Expired, already consumed, or invalid verification links (e.g. mobile prefetching or re-clicks)
+  if (
+    lowerCode === "otp_expired" ||
+    lowerDecoded.includes("email link is invalid or has expired") ||
+    lowerDecoded.includes("token has expired or is invalid") ||
+    lowerDecoded.includes("invalid or expired verification link") ||
+    lowerDecoded.includes("otp_expired")
+  ) {
+    return "This verification link may have expired or has already been used. If you recently registered, please try signing in with your email and password below.";
+  }
+
+  // Cross-browser or cross-device registration flow (missing PKCE verifier)
+  if (
+    lowerDecoded.includes("pkce code verifier not found in storage") ||
+    lowerDecoded.includes("code verifier") ||
+    lowerDecoded.includes("different browser or app")
+  ) {
+    return "Verification link was opened in a different browser or app than where registration started. Please sign in with your email and password below.";
+  }
+
+  return decoded;
+}

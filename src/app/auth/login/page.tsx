@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getAuthErrorMessage } from "@/lib/utils";
+import { getAuthErrorMessage, resolveLoginErrorMessage } from "@/lib/utils";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { LoadingSpinner, FullPageLoader, CenteredProcessingOverlay } from "@/components/LoadingSpinner";
 
@@ -22,22 +22,12 @@ function LoginForm() {
   useEffect(() => {
     // Check for query parameters indicating verification state or errors
     const queryError = searchParams.get("error");
+    const queryErrorCode = searchParams.get("error_code");
     const isVerified = searchParams.get("verified") === "true";
     const isPasswordReset = searchParams.get("password_reset") === "true";
 
     if (queryError) {
-      const decoded = decodeURIComponent(queryError);
-      if (
-        decoded.includes("PKCE code verifier not found in storage") ||
-        decoded.includes("code verifier") ||
-        decoded.includes("different browser or app")
-      ) {
-        setErrorMessage(
-          "Verification link was opened in a different browser or app than where registration started. Please sign in with your email and password below."
-        );
-      } else {
-        setErrorMessage(decoded);
-      }
+      setErrorMessage(resolveLoginErrorMessage(queryError, queryErrorCode));
       setSuccessNotice(null);
     } else if (isVerified) {
       setSuccessNotice("Email verified successfully! You can now sign in to your volunteer account.");
@@ -139,7 +129,12 @@ function LoginForm() {
             {errorMessage && (
               <div
                 role="alert"
-                className="border border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-3 py-2 rounded text-[11px] animate-subtle-fade-up"
+                className={`border rounded px-3 py-2 text-[11px] animate-subtle-fade-up ${
+                  errorMessage.includes("already been used") ||
+                  errorMessage.includes("different browser or app")
+                    ? "border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
+                    : "border-red-300 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+                }`}
               >
                 {errorMessage}
               </div>

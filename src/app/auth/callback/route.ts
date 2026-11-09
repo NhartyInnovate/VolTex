@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const rawType = searchParams.get("type");
-  const type = (rawType as EmailOtpType | null) || (token_hash ? "email" : null);
+  const type = (rawType as EmailOtpType | null) || (token_hash ? "signup" : null);
   const rawNext = searchParams.get("next");
   const code = searchParams.get("code");
   const error = searchParams.get("error");
@@ -24,10 +24,12 @@ export async function GET(request: NextRequest) {
 
   // Handle explicit error responses from Supabase Auth
   if (error || error_description) {
+    const errorCode = searchParams.get("error_code");
     const errorParam = encodeURIComponent(
       error_description || error || "Authentication link invalid or expired."
     );
-    return NextResponse.redirect(`${baseUrl}/auth/login?error=${errorParam}`);
+    const codeQuery = errorCode ? `&error_code=${encodeURIComponent(errorCode)}` : "";
+    return NextResponse.redirect(`${baseUrl}/auth/login?error=${errorParam}${codeQuery}`);
   }
 
   // Pre-configure the response object to capture session cookies
@@ -99,19 +101,27 @@ export async function GET(request: NextRequest) {
 
   // Flow B: Token Hash OTP Verification (Magic link, email signup, token recovery)
   if (token_hash && type) {
-    // In Supabase Auth, 'email' is the canonical type for email signup verification;
-    // 'signup' is accepted as a legacy alias. Map 'signup' to 'email'.
-    const otpType: EmailOtpType = (type === "signup" ? "email" : type) as EmailOtpType;
+    // In Supabase GoTrue Auth:
+    // - New volunteer registration confirmations are stored under confirmation_token and verified with type: 'signup'.
+    // - Magic link sign-in tokens are verified with type: 'email'.
+    // - Password recovery tokens are verified with type: 'recovery'.
+    // Use the explicitly provided type as primary candidate.
+    // For signup or email verification, allow fallback between 'signup' and 'email' to support both
+    // Supabase GoTrue configurations and legacy/custom email template formats.
+    // Never retry arbitrary OTP types (e.g. recovery, invite).
+    const primaryType: EmailOtpType = type as EmailOtpType;
+    const alternateType: EmailOtpType | null =
+      type === "signup" ? "email" : type === "email" ? "signup" : null;
 
     let { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-      type: otpType,
+      type: primaryType,
       token_hash,
     });
 
-    // Fallback: If 'email' was mapped from 'signup' and failed with an unexpected type error, retry with 'signup'
-    if (verifyError && type === "signup") {
+    // Fallback: If primary failed and an alternate candidate exists for signup/email, retry with alternate
+    if (verifyError && alternateType) {
       const retry = await supabase.auth.verifyOtp({
-        type: "signup" as EmailOtpType,
+        type: alternateType,
         token_hash,
       });
       if (!retry.error) {
@@ -139,11 +149,16 @@ export async function GET(request: NextRequest) {
       return redirectResponse;
     }
 
+    const errorCode =
+      verifyError && "code" in verifyError && typeof verifyError.code === "string"
+        ? verifyError.code
+        : "";
     const errorMsg = encodeURIComponent(
       verifyError.message || "Invalid or expired verification link."
     );
+    const codeQuery = errorCode ? `&error_code=${encodeURIComponent(errorCode)}` : "";
     return NextResponse.redirect(
-      `${baseUrl}/auth/login?error=${errorMsg}&error_type=${type}`
+      `${baseUrl}/auth/login?error=${errorMsg}&error_type=${type}${codeQuery}`
     );
   }
 

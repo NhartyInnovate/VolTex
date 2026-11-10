@@ -326,23 +326,23 @@ export function VolunteerReferralCard({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+            <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Total Requests</span>
               <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{stats.totalRawRequests}</p>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+            <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Tracked Visits</span>
               <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{stats.totalTrackedVisits}</p>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+            <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Buyer Leads</span>
               <p className="text-lg font-bold text-red-600 dark:text-red-400 mt-0.5">{stats.cohortLeadsCaptured}</p>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+            <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Converted Leads</span>
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.cohortLeadsConverted}</p>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 col-span-2 sm:col-span-1">
+            <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 col-span-2 sm:col-span-1">
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Conversion Rate</span>
               <p className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">{stats.cohortConversionRate}%</p>
             </div>

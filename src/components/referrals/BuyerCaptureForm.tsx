@@ -45,6 +45,26 @@ export function BuyerCaptureForm({
     }
   }, [initialCode]);
 
+  // Synchronize referralCode whenever initialCode prop changes or from client URL fallback
+  useEffect(() => {
+    if (initialCode && initialCode.trim()) {
+      setReferralCode(initialCode.trim().toUpperCase());
+    } else if (typeof window !== "undefined") {
+      // Fallback: extract code from URL pathname (/r/[code]) or search query (?code= / ?ref=)
+      const pathname = window.location.pathname;
+      const match = pathname.match(/^\/r\/([^/?#]+)/i);
+      if (match && match[1]) {
+        setReferralCode(decodeURIComponent(match[1]).trim().toUpperCase());
+      } else {
+        const sp = new URLSearchParams(window.location.search);
+        const qCode = sp.get("code") || sp.get("ref") || sp.get("referralCode");
+        if (qCode && qCode.trim()) {
+          setReferralCode(qCode.trim().toUpperCase());
+        }
+      }
+    }
+  }, [initialCode]);
+
   // Handle Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +89,12 @@ export function BuyerCaptureForm({
       return;
     }
 
+    const parsedQty = Number(ticketQuantity);
+    if (!Number.isInteger(parsedQty) || parsedQty < 1 || parsedQty > 5) {
+      setErrorMessage("Please select a valid ticket quantity between 1 and 5.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -80,7 +106,7 @@ export function BuyerCaptureForm({
           email: cleanEmail,
           referralCode: cleanCode,
           phone: phone.trim() || null,
-          ticketQuantity,
+          ticketQuantity: parsedQty,
           sourceAttribution: sourceAttribution.trim() || null,
         }),
       });
@@ -177,7 +203,7 @@ export function BuyerCaptureForm({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {volunteerName ? (
             <span>
-              You were referred by <strong className="text-zinc-900 dark:text-white">{volunteerName}</strong>. Enter your details below so your purchase counts toward their leaderboard standing.
+              You were referred by <strong className="text-zinc-900 dark:text-white">{volunteerName}</strong>. Enter your details below so your purchase counts towards their leaderboard standing.
             </span>
           ) : (
             <span>
@@ -219,9 +245,13 @@ export function BuyerCaptureForm({
               required
             />
           </div>
-          {isDirectLink && (
+          {isDirectLink && Boolean(referralCode) ? (
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
               Referral code applied from invite link.
+            </p>
+          ) : (
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+              No referral code supplied. Enter your volunteer&apos;s code if you have one.
             </p>
           )}
         </div>
@@ -290,21 +320,30 @@ export function BuyerCaptureForm({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label htmlFor="tickets-planned" className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
               Tickets Planned
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
                 <Ticket className="w-4 h-4" />
               </div>
-              <input
-                type="number"
-                min="1"
-                max="50"
+              <select
+                id="tickets-planned"
                 value={ticketQuantity}
-                onChange={(e) => setTicketQuantity(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (val >= 1 && val <= 5) {
+                    setTicketQuantity(val);
+                  }
+                }}
+                className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+              >
+                <option value={1}>1 Ticket</option>
+                <option value={2}>2 Tickets</option>
+                <option value={3}>3 Tickets</option>
+                <option value={4}>4 Tickets</option>
+                <option value={5}>5 Tickets</option>
+              </select>
             </div>
           </div>
         </div>
@@ -342,23 +381,13 @@ export function BuyerCaptureForm({
               </>
             ) : (
               <>
-                <span>Continue to Meeteor Ticket Checkout</span>
+                <span>Proceed to Ticket Checkout</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </div>
       </form>
-
-      {/* Direct Bypass Link */}
-      <div className="text-center pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-        <a
-          href={CONFERENCE_CONFIG.ticketUrl}
-          className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 underline transition-colors"
-        >
-          Skip referral capture & purchase tickets directly on Meeteor
-        </a>
-      </div>
     </div>
   );
 }

@@ -62,6 +62,7 @@ export default async function ReferralLandingPage({ params }: ReferralLandingPag
 
       <div className="relative z-10 w-full max-w-lg">
         <BuyerCaptureForm
+          key={rawCode}
           initialCode={rawCode}
           volunteerName={volunteerName}
           isDirectLink={isValidCode}

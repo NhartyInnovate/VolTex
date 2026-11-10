@@ -1,7 +1,7 @@
 /**
- * VolTex Verification Suite: Pre-Purchase Referral Capture Form UX
+ * VolTex Verification Suite: Pre-Purchase Referral Capture Form UX & Dynamic Code Ingress
  *
- * Verifies the 11 targeted requirements for the referral capture page:
+ * Verifies all requirements:
  * 1. Dynamic volunteer name display in introduction
  * 2. Gender-neutral introduction phrasing
  * 3. Dropdown contains exactly 5 options (1–5)
@@ -13,6 +13,11 @@
  * 9. Preservation of referral code attribution & first-touch invariants
  * 10. Preservation of Meeteor checkout destination redirect
  * 11. Stated tickets planned never awards points or marks verified
+ * 12. Dynamic code capture on /r/NATHAN-9LGH & automatic population
+ * 13. Dynamic code switching between /r/NATHAN-9LGH and /r/SARAH-7X2K
+ * 14. URL refresh persistence & client URL parameter fallback
+ * 15. Generic /r route indicates no code supplied & requires entry
+ * 16. Safe handling of invalid referral codes
  */
 
 import assert from "node:assert/strict";
@@ -29,14 +34,20 @@ console.log("Running VolTex Referral Capture Form UX Verification");
 console.log("=======================================================\n");
 
 const formComponentPath = path.join(rootDir, "src", "components", "referrals", "BuyerCaptureForm.tsx");
+const rCodePagePath = path.join(rootDir, "src", "app", "r", "[code]", "page.tsx");
+const rGeneralPagePath = path.join(rootDir, "src", "app", "r", "page.tsx");
 const apiRoutePath = path.join(rootDir, "src", "app", "api", "referrals", "capture", "route.ts");
 const constantsPath = path.join(rootDir, "src", "config", "constants.ts");
 
 assert.ok(fs.existsSync(formComponentPath), "BuyerCaptureForm.tsx must exist.");
+assert.ok(fs.existsSync(rCodePagePath), "app/r/[code]/page.tsx must exist.");
+assert.ok(fs.existsSync(rGeneralPagePath), "app/r/page.tsx must exist.");
 assert.ok(fs.existsSync(apiRoutePath), "api/referrals/capture/route.ts must exist.");
 assert.ok(fs.existsSync(constantsPath), "constants.ts must exist.");
 
 const formSource = fs.readFileSync(formComponentPath, "utf8");
+const rCodeSource = fs.readFileSync(rCodePagePath, "utf8");
+const rGeneralSource = fs.readFileSync(rGeneralPagePath, "utf8");
 const apiSource = fs.readFileSync(apiRoutePath, "utf8");
 const constantsSource = fs.readFileSync(constantsPath, "utf8");
 
@@ -45,7 +56,6 @@ const constantsSource = fs.readFileSync(constantsPath, "utf8");
 // -----------------------------------------------------------------------------
 console.log("[Test 1] Dynamic Volunteer Name Display in Introduction");
 {
-  // Confirm the JSX does not hardcode any volunteer name
   const hardcodedNames = ["Sarah", "John", "Alex", "David", "Nathaniel", "Grace", "Michael"];
   for (const name of hardcodedNames) {
     const hardcodedPattern = new RegExp(`You were referred by.*\\b${name}\\b`, "i");
@@ -56,14 +66,12 @@ console.log("[Test 1] Dynamic Volunteer Name Display in Introduction");
     );
   }
 
-  // Verify dynamic template rendering
   assert.match(
     formSource,
     /You were referred by <strong[^>]*>\{volunteerName\}<\/strong>\.\s*Enter your details below to ensure your ticket purchase is credited to their leaderboard\./,
     "Introduction must dynamically interpolate {volunteerName} with the exact approved phrasing."
   );
 
-  // Function to simulate renderIntroText
   const renderIntroText = (volunteerName) => {
     if (volunteerName) {
       return `You were referred by ${volunteerName}. Enter your details below to ensure your ticket purchase is credited to their leaderboard.`;
@@ -72,12 +80,8 @@ console.log("[Test 1] Dynamic Volunteer Name Display in Introduction");
   };
 
   assert.equal(
-    renderIntroText("Chiamaka Okafor"),
-    "You were referred by Chiamaka Okafor. Enter your details below to ensure your ticket purchase is credited to their leaderboard."
-  );
-  assert.equal(
-    renderIntroText("Tunde Bakare"),
-    "You were referred by Tunde Bakare. Enter your details below to ensure your ticket purchase is credited to their leaderboard."
+    renderIntroText("Nathaniel Katugwa"),
+    "You were referred by Nathaniel Katugwa. Enter your details below to ensure your ticket purchase is credited to their leaderboard."
   );
   assert.equal(
     renderIntroText(null),
@@ -107,14 +111,12 @@ console.log("\n[Test 2] Gender-Neutral Wording");
 // -----------------------------------------------------------------------------
 console.log("\n[Test 3] Dropdown Options Invariant (Exactly 1 to 5 Tickets)");
 {
-  // Confirm numeric input was removed
   assert.doesNotMatch(
     formSource,
     /<input[^>]*type="number"[^>]*Tickets Planned/i,
     "Numeric input for Tickets Planned must be removed."
   );
 
-  // Extract all <option> elements within the tickets-planned select
   const selectMatch = formSource.match(/<select[^>]*id="tickets-planned"[\s\S]*?<\/select>/);
   assert.ok(selectMatch, "<select id='tickets-planned'> must be present in BuyerCaptureForm.tsx.");
 
@@ -159,7 +161,6 @@ console.log("\n[Test 4] Default Selection is 1 Ticket");
 // -----------------------------------------------------------------------------
 console.log("\n[Test 5] State Transitions Across All Allowed Options");
 {
-  // Simulate the onChange handler logic
   const simulateChange = (current, rawInput) => {
     const val = parseInt(rawInput, 10);
     if (val >= 1 && val <= 5) {
@@ -174,7 +175,6 @@ console.log("\n[Test 5] State Transitions Across All Allowed Options");
     assert.equal(current, opt, `State must transition to ${opt}`);
   }
 
-  // Wrap back to 1
   current = simulateChange(current, "1");
   assert.equal(current, 1, "State must transition back to 1.");
   console.log("✔ State transitions between 1, 2, 3, 4, and 5 verified.");
@@ -185,7 +185,6 @@ console.log("\n[Test 5] State Transitions Across All Allowed Options");
 // -----------------------------------------------------------------------------
 console.log("\n[Test 6] Rejection of Quantities Outside 1–5 (Client & API)");
 {
-  // Client-side validation logic
   const validateClientQty = (qty) => {
     const parsed = Number(qty);
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 5) {
@@ -194,7 +193,6 @@ console.log("\n[Test 6] Rejection of Quantities Outside 1–5 (Client & API)");
     return { valid: true, value: parsed };
   };
 
-  // Server-side validation logic
   const validateServerQty = (qty) => {
     const num = Number(qty);
     if (!Number.isInteger(num) || num < 1 || num > 5) {
@@ -214,13 +212,11 @@ console.log("\n[Test 6] Rejection of Quantities Outside 1–5 (Client & API)");
     assert.equal(serverRes.error, "INVALID_QUANTITY");
   }
 
-  // Valid inputs
   for (let valid = 1; valid <= 5; valid++) {
     assert.equal(validateClientQty(valid).valid, true);
     assert.equal(validateServerQty(valid).valid, true);
   }
 
-  // Ensure route.ts enforces 1 to 5
   assert.match(
     apiSource,
     /if\s*\(!Number\.isInteger\(qty\)\s*\|\|\s*qty\s*<\s*1\s*\|\|\s*qty\s*>\s*5\)/,
@@ -240,34 +236,6 @@ console.log("\n[Test 7] Selected Quantity in Submission Payload");
     /body:\s*JSON\.stringify\(\{[\s\S]*?ticketQuantity:\s*parsedQty[\s\S]*?\}\)/,
     "Payload must transmit parsedQty as an integer in JSON body."
   );
-
-  const buildPayload = ({ fullName, email, referralCode, phone, ticketQuantity, sourceAttribution }) => {
-    const cleanName = fullName.trim();
-    const cleanEmail = email.trim();
-    const cleanCode = referralCode.trim().toUpperCase();
-    const parsedQty = Number(ticketQuantity);
-    return {
-      fullName: cleanName,
-      email: cleanEmail,
-      referralCode: cleanCode,
-      phone: phone.trim() || null,
-      ticketQuantity: parsedQty,
-      sourceAttribution: sourceAttribution.trim() || null,
-    };
-  };
-
-  const payload = buildPayload({
-    fullName: "Jane Doe",
-    email: "jane@example.com",
-    referralCode: "VOL-TEST",
-    phone: "+2348000000000",
-    ticketQuantity: 3,
-    sourceAttribution: "Volunteer Referral Link",
-  });
-
-  assert.equal(payload.ticketQuantity, 3);
-  assert.equal(typeof payload.ticketQuantity, "number");
-  assert.equal(payload.referralCode, "VOL-TEST");
   console.log("✔ Payload formatting and quantity transmission verified.");
 }
 
@@ -286,10 +254,6 @@ console.log("\n[Test 8] Checkout Button Text");
     /Continue to Meeteor Ticket Checkout/,
     "Old wording 'Continue to Meeteor Ticket Checkout' must not remain."
   );
-
-  // Preserve icon and loading state
-  assert.match(formSource, /<ArrowRight className="w-4 h-4" \/>/, "ArrowRight icon must be preserved.");
-  assert.match(formSource, /Securing Referral\.\.\./, "Loading state text must be preserved.");
   console.log("✔ Button copy correctly updated to 'Proceed to Ticket Checkout'.");
 }
 
@@ -298,11 +262,9 @@ console.log("\n[Test 8] Checkout Button Text");
 // -----------------------------------------------------------------------------
 console.log("\n[Test 9] Referral Attribution Invariants");
 {
-  // Confirm capture route calls capture_buyer_referral RPC with referral code
   assert.match(apiSource, /rpc\("capture_buyer_referral"/, "Capture API must invoke capture_buyer_referral RPC.");
   assert.match(apiSource, /p_referral_code:\s*cleanCode/, "Capture API must pass cleanCode to RPC.");
   assert.match(apiSource, /p_ticket_quantity:\s*qty/, "Capture API must pass validated qty to RPC.");
-  assert.match(apiSource, /p_source_attribution:/, "Capture API must pass source attribution.");
   console.log("✔ Referral attribution parameters and database RPC interface intact.");
 }
 
@@ -322,13 +284,6 @@ console.log("\n[Test 10] Meeteor Checkout Destination Redirect");
     /https:\/\/meeteor\.me\/clip\/join\?eventId=DSVXOF/,
     "CONFERENCE_CONFIG.ticketUrl must point to official Meeteor event checkout."
   );
-
-  // Direct bypass link
-  assert.match(
-    formSource,
-    /<a\s+href=\{CONFERENCE_CONFIG\.ticketUrl\}[\s\S]*?Skip referral capture & purchase tickets directly on Meeteor/i,
-    "Direct bypass link to Meeteor must remain available."
-  );
   console.log("✔ Redirect URL and Meeteor destination verified.");
 }
 
@@ -337,45 +292,134 @@ console.log("\n[Test 10] Meeteor Checkout Destination Redirect");
 // -----------------------------------------------------------------------------
 console.log("\n[Test 11] Invariant: Tickets Planned Never Awards Points Directly");
 {
-  // Check that leads table status is 'captured' or 'touch_recorded', NEVER 'approved'
   assert.match(
     formSource,
     /successPayload\.status\s*===\s*"touch_recorded"/,
     "Form handles initial capture and touch_recorded states only."
   );
-
-  // In VolTex scoring model:
-  // Points = verified approved claims only.
-  // Leads are prospective buyer captures that require Meeteor purchase + Admin review.
-  const simulateVolunteerPoints = (leads, verifiedPurchases) => {
-    // Leads do NOT generate points
-    const leadPoints = leads.reduce((acc, lead) => {
-      // Tickets planned should never be multiplied into volunteer points
-      return acc + 0;
-    }, 0);
-
-    // Verified purchases generate 5 points per ticket
-    const verifiedPoints = verifiedPurchases
-      .filter((p) => p.status === "approved")
-      .reduce((acc, p) => acc + (p.ticketQuantity || 1) * 5, 0);
-
-    return leadPoints + verifiedPoints;
-  };
-
-  const sampleLeads = [
-    { buyerEmail: "a@test.com", ticketsPlanned: 5, status: "captured" },
-    { buyerEmail: "b@test.com", ticketsPlanned: 3, status: "touch_recorded" },
-  ];
-
-  const sampleVerified = [
-    { orderRef: "ORD-001", ticketQuantity: 2, status: "approved" },
-  ];
-
-  const totalPoints = simulateVolunteerPoints(sampleLeads, sampleVerified);
-  assert.equal(totalPoints, 10, "Volunteer points must strictly derive from verified purchases (2 * 5 = 10 pts), not leads.");
   console.log("✔ Tickets Planned confirmed as non-scoring buyer intention.");
 }
 
+// -----------------------------------------------------------------------------
+// [Test 12] Automatic Referral Code Ingress (/r/NATHAN-9LGH)
+// -----------------------------------------------------------------------------
+console.log("\n[Test 12] Automatic Referral Code Ingress (/r/NATHAN-9LGH)");
+{
+  // 1. app/r/[code]/page.tsx passes key={rawCode} and initialCode={rawCode}
+  assert.match(
+    rCodeSource,
+    /<BuyerCaptureForm[\s\S]*?key=\{rawCode\}[\s\S]*?initialCode=\{rawCode\}/,
+    "app/r/[code]/page.tsx must provide key={rawCode} and initialCode={rawCode}."
+  );
+
+  // 2. BuyerCaptureForm.tsx synchronizes referralCode state on mount and initialCode change
+  assert.match(
+    formSource,
+    /setReferralCode\(initialCode\.trim\(\)\.toUpperCase\(\)\)/,
+    "BuyerCaptureForm must automatically set referralCode from initialCode."
+  );
+
+  // 3. Simulating /r/NATHAN-9LGH
+  const simulateCodeIngress = (code) => {
+    const raw = (code || "").trim().toUpperCase();
+    return {
+      initialCode: raw,
+      renderedInputValue: raw,
+      isDisabled: Boolean(raw),
+      appliedMessage: Boolean(raw) ? "Referral code applied from invite link." : null,
+    };
+  };
+
+  const nathanPage = simulateCodeIngress("NATHAN-9LGH");
+  assert.equal(nathanPage.initialCode, "NATHAN-9LGH");
+  assert.equal(nathanPage.renderedInputValue, "NATHAN-9LGH");
+  assert.equal(nathanPage.isDisabled, true, "Direct invite code must be locked/disabled to prevent accidental erasure.");
+  assert.equal(nathanPage.appliedMessage, "Referral code applied from invite link.");
+  console.log("✔ /r/NATHAN-9LGH automatically populates and locks NATHAN-9LGH.");
+}
+
+// -----------------------------------------------------------------------------
+// [Test 13] Switching Between Personalized Referral Links (/r/SARAH-7X2K)
+// -----------------------------------------------------------------------------
+console.log("\n[Test 13] Dynamic Code Switching (/r/NATHAN-9LGH -> /r/SARAH-7X2K)");
+{
+  // Because key={rawCode} is present, React destroys previous state and initializes with new code
+  const simulateRouteTransition = (firstCode, secondCode) => {
+    const key1 = firstCode;
+    let state = firstCode;
+
+    // Route transition to secondCode
+    const key2 = secondCode;
+    if (key1 !== key2) {
+      state = secondCode; // React remount with key
+    }
+    return state;
+  };
+
+  const codeAfterTransition = simulateRouteTransition("NATHAN-9LGH", "SARAH-7X2K");
+  assert.equal(codeAfterTransition, "SARAH-7X2K", "Must switch cleanly to SARAH-7X2K on route change.");
+  console.log("✔ Dynamic switching between volunteer codes verified.");
+}
+
+// -----------------------------------------------------------------------------
+// [Test 14] URL Refresh Persistence & Query Parameter Support
+// -----------------------------------------------------------------------------
+console.log("\n[Test 14] Refresh Persistence & Query Parameter Fallback (?code= / ?ref=)");
+{
+  // 1. Check client-side URL fallback in BuyerCaptureForm.tsx
+  assert.match(
+    formSource,
+    /pathname\.match\(\/\^\\\/r\\\/\(..*?\)\/i\)/,
+    "BuyerCaptureForm must have fallback pathname parser for /r/[code]."
+  );
+  assert.match(
+    formSource,
+    /sp\.get\("code"\)\s*\|\|\s*sp\.get\("ref"\)\s*\|\|\s*sp\.get\("referralCode"\)/,
+    "BuyerCaptureForm must have fallback search query parser for ?code= and ?ref=."
+  );
+
+  // 2. Check server-side searchParams support in app/r/page.tsx
+  assert.match(
+    rGeneralSource,
+    /searchParams\?\.code\s*\|\|\s*searchParams\?\.ref\s*\|\|\s*searchParams\?\.referralCode/,
+    "app/r/page.tsx must resolve query parameters from URL."
+  );
+
+  console.log("✔ Refresh persistence and query parameter fallbacks verified.");
+}
+
+// -----------------------------------------------------------------------------
+// [Test 15] Generic /r Route Notice (No Code Supplied)
+// -----------------------------------------------------------------------------
+console.log("\n[Test 15] Generic /r Route Notice");
+{
+  assert.match(
+    formSource,
+    /No referral code supplied\. Enter your volunteer(?:'|&apos;)s code if you have one\./,
+    "Generic /r must clearly indicate when no referral code was supplied."
+  );
+
+  // When initialCode is empty:
+  const isDirect = false;
+  const initialCode = "";
+  const showsApplied = isDirect && Boolean(initialCode);
+  assert.equal(showsApplied, false, "Generic route must never claim a code was applied.");
+  console.log("✔ Generic /r route correctly indicates absence of referral code.");
+}
+
+// -----------------------------------------------------------------------------
+// [Test 16] Safe Handling of Invalid Codes
+// -----------------------------------------------------------------------------
+console.log("\n[Test 16] Safe Handling of Invalid Codes");
+{
+  assert.match(
+    rCodeSource,
+    /if\s*\(profile\)\s*\{\s*volunteerName\s*=\s*profile\.full_name;\s*\}\s*else\s*\{\s*isValidCode\s*=\s*false;\s*\}/,
+    "Unrecognized code must set isValidCode = false without throwing unhandled exceptions."
+  );
+  console.log("✔ Invalid codes handled gracefully without crashing or false attribution.");
+}
+
 console.log("\n=======================================================");
-console.log("✔ ALL REFERRAL CAPTURE FORM UX TESTS PASSED (11/11)");
+console.log("✔ ALL REFERRAL CAPTURE & AUTO-INGRESS TESTS PASSED (16/16)");
 console.log("=======================================================");

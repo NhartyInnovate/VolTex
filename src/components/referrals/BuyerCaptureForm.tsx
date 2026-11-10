@@ -45,6 +45,26 @@ export function BuyerCaptureForm({
     }
   }, [initialCode]);
 
+  // Synchronize referralCode whenever initialCode prop changes or from client URL fallback
+  useEffect(() => {
+    if (initialCode && initialCode.trim()) {
+      setReferralCode(initialCode.trim().toUpperCase());
+    } else if (typeof window !== "undefined") {
+      // Fallback: extract code from URL pathname (/r/[code]) or search query (?code= / ?ref=)
+      const pathname = window.location.pathname;
+      const match = pathname.match(/^\/r\/([^/?#]+)/i);
+      if (match && match[1]) {
+        setReferralCode(decodeURIComponent(match[1]).trim().toUpperCase());
+      } else {
+        const sp = new URLSearchParams(window.location.search);
+        const qCode = sp.get("code") || sp.get("ref") || sp.get("referralCode");
+        if (qCode && qCode.trim()) {
+          setReferralCode(qCode.trim().toUpperCase());
+        }
+      }
+    }
+  }, [initialCode]);
+
   // Handle Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,9 +245,13 @@ export function BuyerCaptureForm({
               required
             />
           </div>
-          {isDirectLink && (
+          {isDirectLink && Boolean(referralCode) ? (
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
               Referral code applied from invite link.
+            </p>
+          ) : (
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+              No referral code supplied. Enter your volunteer&apos;s code if you have one.
             </p>
           )}
         </div>

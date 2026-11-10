@@ -388,16 +388,6 @@ export function BuyerCaptureForm({
           </button>
         </div>
       </form>
-
-      {/* Direct Bypass Link */}
-      <div className="text-center pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-        <a
-          href={CONFERENCE_CONFIG.ticketUrl}
-          className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 underline transition-colors"
-        >
-          Skip referral capture & purchase tickets directly on Meeteor
-        </a>
-      </div>
     </div>
   );
 }

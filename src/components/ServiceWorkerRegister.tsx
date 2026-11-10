@@ -24,9 +24,16 @@ export function ServiceWorkerRegister() {
       return;
     }
 
+    let currentRegistration: ServiceWorkerRegistration | null = null;
+
     const registerSW = () => {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
+        .then((registration) => {
+          currentRegistration = registration;
+          // Periodically check for service worker script updates
+          registration.update().catch(() => {});
+        })
         .catch((err) => {
           // Gracefully suppress or softly log without breaking UI
           if (process.env.NODE_ENV === "development") {
@@ -35,12 +42,24 @@ export function ServiceWorkerRegister() {
         });
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && currentRegistration) {
+        currentRegistration.update().catch(() => {});
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
     if (document.readyState === "complete") {
       registerSW();
     } else {
       window.addEventListener("load", registerSW, { once: true });
-      return () => window.removeEventListener("load", registerSW);
     }
+
+    return () => {
+      window.removeEventListener("load", registerSW);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   return null;

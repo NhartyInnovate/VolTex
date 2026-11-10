@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { VersionUpdateMonitor } from "@/components/VersionUpdateMonitor";
 import { PWA_INSTALL_CAPTURE_SCRIPT } from "@/lib/pwaInstall";
 
 export const viewport: Viewport = {
@@ -70,6 +71,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col antialiased selection:bg-tedx-red selection:text-white transition-colors duration-200">
         <ThemeProvider>
           <ServiceWorkerRegister />
+          <VersionUpdateMonitor />
           <Navbar />
           <main className="flex-1 flex flex-col">
             <PageTransition>{children}</PageTransition>

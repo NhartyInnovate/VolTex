@@ -66,12 +66,10 @@ export function AdminLeadsManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Conversion Modal State
+  // Direct Verification & Conversion Modal State
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
-  const [referralClaimId, setReferralClaimId] = useState("");
-  const [attributionResolution, setAttributionResolution] = useState<"match" | "award_to_referrer" | "award_to_claimant">("award_to_referrer");
-  const [forceEmailOverride, setForceEmailOverride] = useState(false);
-  const [adminNotes, setAdminNotes] = useState("");
+  const [ticketQuantity, setTicketQuantity] = useState(1);
+  const [adminNotes, setAdminNotes] = useState("Verified on Meeteor attendee roster");
   const [submittingConversion, setSubmittingConversion] = useState(false);
   const [conversionError, setConversionError] = useState<string | null>(null);
   const [conversionSuccess, setConversionSuccess] = useState<string | null>(null);
@@ -124,7 +122,7 @@ export function AdminLeadsManagement() {
 
   const handleConvertSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLead || !referralClaimId.trim()) return;
+    if (!selectedLead) return;
 
     setSubmittingConversion(true);
     setConversionError(null);
@@ -136,31 +134,28 @@ export function AdminLeadsManagement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           buyerReferralId: selectedLead.id,
-          referralId: referralClaimId.trim(),
-          attributionResolution,
-          forceEmailOverride,
-          adminNotes: adminNotes.trim() || null,
+          ticketQuantity,
+          adminNotes: adminNotes.trim() || "Verified on Meeteor attendee roster",
         }),
       });
 
       const result = await res.json();
 
       if (!res.ok || !result.success) {
-        setConversionError(result.message || "Conversion failed");
+        setConversionError(result.message || "Approval and credit failed");
         setSubmittingConversion(false);
         return;
       }
 
       setConversionSuccess(
-        `Lead successfully converted! Total conversions for this buyer lead: ${result.conversionCount}`
+        `Successfully verified! Credited ${result.ticketsCredited || ticketQuantity} ticket(s) (+${result.pointsAwarded || ticketQuantity * 5} pts) to volunteer.`
       );
       fetchLeads();
       setTimeout(() => {
         setSelectedLead(null);
-        setReferralClaimId("");
-        setAdminNotes("");
+        setAdminNotes("Verified on Meeteor attendee roster");
         setConversionSuccess(null);
-      }, 2000);
+      }, 1800);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Network error";
       setConversionError(message);
@@ -360,17 +355,41 @@ export function AdminLeadsManagement() {
                             <span>Reopen</span>
                           </button>
                         )}
-                        <button
-                          onClick={() => {
-                            setSelectedLead(lead);
-                            setReferralClaimId("");
-                            setConversionError(null);
-                            setConversionSuccess(null);
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-[11px] font-semibold transition-colors"
-                        >
-                          Match Claim
-                        </button>
+                        {lead.status === "converted" ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] border border-emerald-200 dark:border-emerald-800/60">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Paid & Credited</span>
+                            </span>
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setTicketQuantity(1);
+                                setAdminNotes("Verified on Meeteor attendee roster");
+                                setConversionError(null);
+                                setConversionSuccess(null);
+                              }}
+                              className="px-2 py-1 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-[10px] underline"
+                              title="Credit additional ticket purchase"
+                            >
+                              + Credit More
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setTicketQuantity(lead.ticket_quantity || 1);
+                              setAdminNotes("Verified on Meeteor attendee roster");
+                              setConversionError(null);
+                              setConversionSuccess(null);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] transition-colors inline-flex items-center gap-1.5 shadow-sm active:scale-95"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Confirm Paid & Credit</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -435,16 +454,17 @@ export function AdminLeadsManagement() {
         </div>
       )}
 
-      {/* Conversion Modal */}
+      {/* Confirm Paid & Credit Points Modal */}
       {selectedLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
-                Match Lead to Approved Ticket Claim
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span>Confirm Paid & Credit Points</span>
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Link buyer lead <strong className="text-zinc-900 dark:text-white">{selectedLead.buyer_name}</strong> ({selectedLead.buyer_email}) with an approved claim.
+                Verify this attendee on your Meeteor roster to immediately approve the referral and credit volunteer leaderboard points.
               </p>
             </div>
 
@@ -455,98 +475,93 @@ export function AdminLeadsManagement() {
             )}
 
             {conversionSuccess && (
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 text-xs">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                 {conversionSuccess}
               </div>
             )}
 
-            <form onSubmit={handleConvertSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Referral Claim UUID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Paste approved claim ID (e.g. 3fa85f64-5717-4562-b3fc-...)"
-                  value={referralClaimId}
-                  onChange={(e) => setReferralClaimId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 font-mono text-zinc-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Attribution Resolution Strategy
-                </label>
-                <div className="space-y-1.5 pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="attribution"
-                      value="award_to_referrer"
-                      checked={attributionResolution === "award_to_referrer"}
-                      onChange={() => setAttributionResolution("award_to_referrer")}
-                    />
-                    <span>
-                      <strong>Award to Referrer:</strong> Reassign ticket claim so points compute for First-Touch Volunteer ({selectedLead.profiles?.full_name || selectedLead.referral_code})
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="attribution"
-                      value="award_to_claimant"
-                      checked={attributionResolution === "award_to_claimant"}
-                      onChange={() => setAttributionResolution("award_to_claimant")}
-                    />
-                    <span>
-                      <strong>Award to Claimant:</strong> Preserve claim under original claim submitter
-                    </span>
-                  </label>
+            {/* Attendee & Volunteer Summary Card */}
+            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/60 space-y-3 text-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Attendee</div>
+                  <div className="font-bold text-sm text-zinc-900 dark:text-white">{selectedLead.buyer_name}</div>
+                  <div className="text-zinc-600 dark:text-zinc-300 font-mono text-[11px]">{selectedLead.buyer_email}</div>
+                  {selectedLead.buyer_phone && (
+                    <div className="text-zinc-400 text-[11px]">{selectedLead.buyer_phone}</div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Credited Volunteer</div>
+                  <div className="font-bold text-sm text-red-600 dark:text-red-400">
+                    {selectedLead.profiles?.full_name || selectedLead.referral_code}
+                  </div>
+                  <div className="text-zinc-500 dark:text-zinc-400 text-[11px] font-mono">
+                    Code: {selectedLead.referral_code}
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer font-medium text-zinc-700 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={forceEmailOverride}
-                    onChange={(e) => setForceEmailOverride(e.target.checked)}
-                  />
-                  <span>Force Email Mismatch Override (If claim email differs from lead email)</span>
-                </label>
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-700/60 flex items-center justify-between text-[11px]">
+                <span className="text-zinc-500 dark:text-zinc-400">Lead Status:</span>
+                <span className="font-semibold uppercase text-amber-600 dark:text-amber-400">
+                  {selectedLead.status === "converted" ? `Converted (${selectedLead.conversion_count}x)` : selectedLead.status}
+                </span>
+              </div>
+            </div>
 
-                {forceEmailOverride && (
-                  <div>
-                    <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                      Admin Explanation Notes <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Explain why the email mismatch was verified and approved..."
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                      required={forceEmailOverride}
-                    />
-                  </div>
-                )}
+            <form onSubmit={handleConvertSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                  Number of Tickets Paid on Meeteor
+                </label>
+                <select
+                  value={ticketQuantity}
+                  onChange={(e) => setTicketQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                >
+                  <option value={1}>1 Ticket (+5 Points)</option>
+                  <option value={2}>2 Tickets (+10 Points)</option>
+                  <option value={3}>3 Tickets (+15 Points)</option>
+                  <option value={4}>4 Tickets (+20 Points)</option>
+                  <option value={5}>5 Tickets (+25 Points)</option>
+                  <option value={6}>6 Tickets (+30 Points)</option>
+                  <option value={10}>10 Tickets (+50 Points)</option>
+                </select>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                  Awards <strong>+{ticketQuantity * 5} points</strong> directly to {selectedLead.profiles?.full_name || selectedLead.referral_code} on the volunteer leaderboard.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                  Verification Audit Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Verified on Meeteor attendee roster"
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                />
               </div>
 
               <div className="flex gap-2 pt-3">
                 <button
                   type="submit"
                   disabled={submittingConversion}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors flex items-center justify-center gap-2 disabled:bg-zinc-400"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors flex items-center justify-center gap-2 disabled:bg-zinc-400 active:scale-95"
                 >
                   {submittingConversion ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Converting...</span>
+                      <span>Crediting...</span>
                     </>
                   ) : (
-                    <span>Confirm Conversion</span>
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Approve & Award +{ticketQuantity * 5} Pts</span>
+                    </>
                   )}
                 </button>
                 <button

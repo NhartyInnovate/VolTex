@@ -203,7 +203,7 @@ export function BuyerCaptureForm({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {volunteerName ? (
             <span>
-              You were referred by <strong className="text-zinc-900 dark:text-white">{volunteerName}</strong>. Enter your details below to ensure your ticket purchase is credited to their leaderboard.
+              You were referred by <strong className="text-zinc-900 dark:text-white">{volunteerName}</strong>. Enter your details below so your purchase counts towards their leaderboard standing.
             </span>
           ) : (
             <span>

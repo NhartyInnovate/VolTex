@@ -68,20 +68,20 @@ console.log("[Test 1] Dynamic Volunteer Name Display in Introduction");
 
   assert.match(
     formSource,
-    /You were referred by <strong[^>]*>\{volunteerName\}<\/strong>\.\s*Enter your details below to ensure your ticket purchase is credited to their leaderboard\./,
+    /You were referred by <strong[^>]*>\{volunteerName\}<\/strong>\.\s*Enter your details below so your purchase counts towards their leaderboard standing\./,
     "Introduction must dynamically interpolate {volunteerName} with the exact approved phrasing."
   );
 
   const renderIntroText = (volunteerName) => {
     if (volunteerName) {
-      return `You were referred by ${volunteerName}. Enter your details below to ensure your ticket purchase is credited to their leaderboard.`;
+      return `You were referred by ${volunteerName}. Enter your details below so your purchase counts towards their leaderboard standing.`;
     }
     return "Enter your details and volunteer referral code before proceeding to official ticket checkout.";
   };
 
   assert.equal(
     renderIntroText("Nathaniel Katugwa"),
-    "You were referred by Nathaniel Katugwa. Enter your details below to ensure your ticket purchase is credited to their leaderboard."
+    "You were referred by Nathaniel Katugwa. Enter your details below so your purchase counts towards their leaderboard standing."
   );
   assert.equal(
     renderIntroText(null),
@@ -95,7 +95,7 @@ console.log("[Test 1] Dynamic Volunteer Name Display in Introduction");
 // -----------------------------------------------------------------------------
 console.log("\n[Test 2] Gender-Neutral Wording");
 {
-  const introMatch = formSource.match(/You were referred by[\s\S]*?credited to their leaderboard\./);
+  const introMatch = formSource.match(/You were referred by[\s\S]*?their leaderboard standing\./);
   assert.ok(introMatch, "Updated introduction sentence must be present.");
   const sentence = introMatch[0];
 

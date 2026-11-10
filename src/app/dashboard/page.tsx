@@ -83,7 +83,7 @@ function VolunteerDashboardContent() {
   const tourSteps: TourStep[] = useMemo(
     () => [
       {
-        targetId: "tour-tab-templates",
+        targetId: "tour-section-templates",
         title: "Promote with Confidence",
         message:
           "Find ready-made promotional messages you can copy and share to help drive TEDxGwarinpa ticket sales.",
@@ -949,7 +949,7 @@ function VolunteerDashboardContent() {
 
       {/* TAB 3: Promotional Templates */}
       {activeTab === "templates" && (
-        <div className="space-y-4 animate-subtle-fade-up">
+        <div id="tour-section-templates" className="space-y-4 animate-subtle-fade-up">
           <div>
             <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">
               Promotional Templates

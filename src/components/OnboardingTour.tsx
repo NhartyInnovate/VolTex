@@ -39,6 +39,8 @@ export function OnboardingTour({
   const [targetRect, setTargetRect] = useState<RectBounds | null>(null);
   const [mounted, setMounted] = useState(false);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -61,7 +63,7 @@ export function OnboardingTour({
     }
   }, [isOpen, currentStepIndex, currentStep, onStepChange]);
 
-  // Recalculate target bounding box
+  // Recalculate target bounding box with state deduplication
   const updateTargetRect = useCallback(() => {
     if (!isOpen || !currentStep) {
       setTargetRect(null);
@@ -75,37 +77,174 @@ export function OnboardingTour({
     }
 
     const rect = element.getBoundingClientRect();
-    setTargetRect({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-      bottom: rect.bottom,
-      right: rect.right,
+    if (rect.width === 0 && rect.height === 0) {
+      setTargetRect(null);
+      return;
+    }
+
+    setTargetRect((prev) => {
+      if (
+        prev &&
+        Math.abs(prev.top - rect.top) < 0.5 &&
+        Math.abs(prev.left - rect.left) < 0.5 &&
+        Math.abs(prev.width - rect.width) < 0.5 &&
+        Math.abs(prev.height - rect.height) < 0.5
+      ) {
+        return prev;
+      }
+      return {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+        right: rect.right,
+      };
     });
   }, [isOpen, currentStep]);
 
-  // Scroll target element into view smoothly when step changes
+  // Reliable target tracking and scroll stabilization
   useEffect(() => {
-    if (!isOpen || !currentStep) return;
+    if (!isOpen || !currentStep) {
+      setTargetRect(null);
+      return;
+    }
 
-    // Small timeout to allow tab transition animations / DOM layout updates
-    const timer = setTimeout(() => {
+    let isCancelled = false;
+
+    // Clean up any pending frame or observer from previous step
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+
+    let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let pollCount = 0;
+    const maxPolls = 60; // Up to ~1500ms for tab transition and DOM mount
+
+    const findAndTrackTarget = () => {
+      if (isCancelled) return;
+
       const element = document.getElementById(currentStep.targetId);
-      if (element) {
-        element.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "nearest",
-        });
-        // Update coordinates after potential scroll
-        setTimeout(updateTargetRect, 250);
-      } else {
-        updateTargetRect();
-      }
-    }, 60);
 
-    return () => clearTimeout(timer);
+      // Wait if element is not yet in DOM or has not finished layout
+      if (!element || (element.offsetWidth === 0 && element.offsetHeight === 0)) {
+        if (pollCount++ < maxPolls) {
+          pollTimeoutId = setTimeout(findAndTrackTarget, 25);
+        }
+        return;
+      }
+
+      // Initial rect measurement
+      const initialRect = element.getBoundingClientRect();
+      setTargetRect({
+        top: initialRect.top,
+        left: initialRect.left,
+        width: initialRect.width,
+        height: initialRect.height,
+        bottom: initialRect.bottom,
+        right: initialRect.right,
+      });
+
+      // Initiate smooth scroll (align top if tall element, center otherwise)
+      const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 700;
+      const isTall = initialRect.height > viewportHeight * 0.55;
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: isTall ? "start" : "center",
+        inline: "nearest",
+      });
+
+      // Frame-by-frame tracking loop to follow target throughout smooth scroll
+      let lastTop = initialRect.top;
+      let lastLeft = initialRect.left;
+      let lastWidth = initialRect.width;
+      let lastHeight = initialRect.height;
+      let stableFrames = 0;
+      let frameCount = 0;
+      const maxFrames = 120; // Max ~2 seconds of tracking
+
+      const trackFrame = () => {
+        if (isCancelled) return;
+
+        const el = document.getElementById(currentStep.targetId);
+        if (!el) return;
+
+        const rect = el.getBoundingClientRect();
+        const delta =
+          Math.abs(rect.top - lastTop) +
+          Math.abs(rect.left - lastLeft) +
+          Math.abs(rect.width - lastWidth) +
+          Math.abs(rect.height - lastHeight);
+
+        if (delta > 0.25) {
+          setTargetRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            bottom: rect.bottom,
+            right: rect.right,
+          });
+          lastTop = rect.top;
+          lastLeft = rect.left;
+          lastWidth = rect.width;
+          lastHeight = rect.height;
+          stableFrames = 0;
+        } else {
+          stableFrames++;
+        }
+
+        frameCount++;
+
+        // Stop loop when coordinates have stabilized for 8 consecutive frames (~130ms) or hit timeout
+        if (stableFrames >= 8 || frameCount >= maxFrames) {
+          setTargetRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            bottom: rect.bottom,
+            right: rect.right,
+          });
+
+          // Attach ResizeObserver to capture asynchronous layout reflows (e.g. stats/images loading)
+          if (typeof ResizeObserver !== "undefined") {
+            const ro = new ResizeObserver(() => {
+              if (!isCancelled) {
+                updateTargetRect();
+              }
+            });
+            ro.observe(el);
+            if (document.body) {
+              ro.observe(document.body);
+            }
+            observerRef.current = ro;
+          }
+          return;
+        }
+
+        rafIdRef.current = requestAnimationFrame(trackFrame);
+      };
+
+      rafIdRef.current = requestAnimationFrame(trackFrame);
+    };
+
+    findAndTrackTarget();
+
+    return () => {
+      isCancelled = true;
+      if (pollTimeoutId) clearTimeout(pollTimeoutId);
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
   }, [isOpen, currentStepIndex, currentStep, updateTargetRect]);
 
   // Handle resize, scroll, and orientation change

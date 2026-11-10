@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (qty < 1 || qty > 50) {
+    if (!Number.isInteger(qty) || qty < 1 || qty > 5) {
       return NextResponse.json(
-        { success: false, error: "INVALID_QUANTITY", message: "Ticket quantity must be between 1 and 50." },
+        { success: false, error: "INVALID_QUANTITY", message: "Ticket quantity must be between 1 and 5." },
         { status: 400 }
       );
     }

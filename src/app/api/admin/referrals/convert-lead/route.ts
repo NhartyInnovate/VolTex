@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isValidEmailAddress, sendVolunteerDecisionNotification } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,50 @@ export async function POST(request: NextRequest) {
           notes: `Direct Meeteor roster approval for lead ${lead.id} (${lead.buyer_email}). Credited ${qty} ticket(s) to volunteer ${lead.volunteer_id}. Note: ${noteText}`,
         });
 
+      // 6. Non-blocking Volunteer Notification & Celebration Email Dispatch
+      try {
+        // Trigger database in-app notification
+        await supabase.rpc("create_volunteer_decision_notification", {
+          p_referral_id: newReferral.id,
+        });
+
+        // Resolve volunteer email and send celebratory Resend email
+        if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+          const { data: authUser } = await adminClient.auth.admin.getUserById(lead.volunteer_id);
+          const volunteerEmail = authUser?.user?.email?.trim();
+
+          if (volunteerEmail && isValidEmailAddress(volunteerEmail)) {
+            const { data: volProfile } = await adminClient
+              .from("profiles")
+              .select("full_name")
+              .eq("id", lead.volunteer_id)
+              .maybeSingle();
+
+            const { data: leaderboardData } = await adminClient
+              .from("public_leaderboard")
+              .select("points, rank")
+              .eq("volunteer_id", lead.volunteer_id)
+              .maybeSingle();
+
+            await sendVolunteerDecisionNotification({
+              decision: "approved",
+              volunteerName: volProfile?.full_name || "Volunteer",
+              to: volunteerEmail,
+              ticketType: "Regular / Delegate Ticket",
+              ticketQuantity: qty,
+              orderReference: lead.buyer_email,
+              pointsEarned: qty * 5,
+              cumulativePoints: leaderboardData?.points ?? null,
+              rank: leaderboardData?.rank ?? null,
+              adminNotes: noteText,
+              referralId: newReferral.id,
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.warn("[ADMIN_DIRECT_CONVERT] Non-blocking notification dispatch notice:", notifErr);
+      }
+
       return NextResponse.json({
         success: true,
         conversionId: conversion?.id || null,
@@ -191,6 +236,59 @@ export async function POST(request: NextRequest) {
         { success: false, error: "CONVERSION_FAILED", message: error.message },
         { status: 400 }
       );
+    }
+
+    // Non-blocking notification dispatch for legacy match conversion
+    if (referralId) {
+      try {
+        await supabase.rpc("create_volunteer_decision_notification", {
+          p_referral_id: referralId,
+        });
+
+        const targetVolId = data?.credited_volunteer_id;
+        if (targetVolId && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+          const { data: authUser } = await adminClient.auth.admin.getUserById(targetVolId);
+          const volunteerEmail = authUser?.user?.email?.trim();
+
+          if (volunteerEmail && isValidEmailAddress(volunteerEmail)) {
+            const { data: volProfile } = await adminClient
+              .from("profiles")
+              .select("full_name")
+              .eq("id", targetVolId)
+              .maybeSingle();
+
+            const { data: leaderboardData } = await adminClient
+              .from("public_leaderboard")
+              .select("points, rank")
+              .eq("volunteer_id", targetVolId)
+              .maybeSingle();
+
+            const { data: refRow } = await adminClient
+              .from("referrals")
+              .select("ticket_type, ticket_quantity, order_reference, admin_notes")
+              .eq("id", referralId)
+              .maybeSingle();
+
+            if (refRow) {
+              await sendVolunteerDecisionNotification({
+                decision: "approved",
+                volunteerName: volProfile?.full_name || "Volunteer",
+                to: volunteerEmail,
+                ticketType: refRow.ticket_type,
+                ticketQuantity: refRow.ticket_quantity,
+                orderReference: refRow.order_reference,
+                pointsEarned: refRow.ticket_quantity * 5,
+                cumulativePoints: leaderboardData?.points ?? null,
+                rank: leaderboardData?.rank ?? null,
+                adminNotes: refRow.admin_notes,
+                referralId,
+              });
+            }
+          }
+        }
+      } catch (notifErr) {
+        console.warn("[ADMIN_MATCH_CONVERT] Non-blocking notification notice:", notifErr);
+      }
     }
 
     return NextResponse.json({

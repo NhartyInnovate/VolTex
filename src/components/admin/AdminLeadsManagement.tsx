@@ -147,6 +147,15 @@ export function AdminLeadsManagement() {
         return;
       }
 
+      // Non-blocking volunteer notification and email dispatch safety net
+      if (result.referralId) {
+        fetch("/api/notifications/notify-volunteer-decision", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referralId: result.referralId }),
+        }).catch((err) => console.warn("Volunteer notification dispatch notice:", err));
+      }
+
       setConversionSuccess(
         `Successfully verified! Credited ${result.ticketsCredited || ticketQuantity} ticket(s) (+${result.pointsAwarded || ticketQuantity * 5} pts) to volunteer.`
       );

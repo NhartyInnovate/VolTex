@@ -104,8 +104,74 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // 4. Execute Atomic Database-Side Deletion RPC
-    // Executes inside a single PostgreSQL transaction with row-level locking (FOR UPDATE)
+    // 4. Clean up any dependent buyer leads, touches, and conversions for this volunteer
+    // This allows administrators to cleanly delete accounts with verified test sales or leads
+    // without violating PostgreSQL foreign-key RESTRICT constraints.
+    try {
+      // Find all referrals belonging to target user
+      const { data: userReferrals } = await adminClient
+        .from("referrals")
+        .select("id")
+        .eq("volunteer_id", targetUserId);
+      const userRefIds = (userReferrals || []).map((r) => r.id);
+
+      // Find all buyer leads belonging to target user
+      const { data: userBuyerReferrals } = await adminClient
+        .from("buyer_referrals")
+        .select("id")
+        .eq("volunteer_id", targetUserId);
+      const userBuyerRefIds = (userBuyerReferrals || []).map((b) => b.id);
+
+      // 4.1 Delete lead_claim_conversions
+      await adminClient
+        .from("lead_claim_conversions")
+        .delete()
+        .eq("credited_volunteer_id", targetUserId);
+
+      await adminClient
+        .from("lead_claim_conversions")
+        .delete()
+        .eq("original_claimant_id", targetUserId);
+
+      if (userRefIds.length > 0) {
+        await adminClient
+          .from("lead_claim_conversions")
+          .delete()
+          .in("referral_id", userRefIds);
+      }
+
+      if (userBuyerRefIds.length > 0) {
+        await adminClient
+          .from("lead_claim_conversions")
+          .delete()
+          .in("buyer_referral_id", userBuyerRefIds);
+      }
+
+      // 4.2 Delete buyer_referral_touches
+      await adminClient
+        .from("buyer_referral_touches")
+        .delete()
+        .eq("subsequent_volunteer_id", targetUserId);
+
+      if (userBuyerRefIds.length > 0) {
+        await adminClient
+          .from("buyer_referral_touches")
+          .delete()
+          .in("buyer_referral_id", userBuyerRefIds);
+      }
+
+      // 4.3 Delete buyer_referrals
+      await adminClient
+        .from("buyer_referrals")
+        .delete()
+        .eq("volunteer_id", targetUserId);
+    } catch (cleanupErr) {
+      console.warn("[ADMIN_USER_DELETE] Dependent records cleanup notice:", cleanupErr);
+    }
+
+    // 5. Execute Atomic Database-Side Deletion RPC
+    // Now that dependent child attribution records are cleared, admin_delete_volunteer_account
+    // acquires the exclusive lock, cascades referrals, profiles, and auth.users, and writes audit logs.
     const { data: rpcRawData, error: rpcError } = await adminClient.rpc(
       "admin_delete_volunteer_account",
       {

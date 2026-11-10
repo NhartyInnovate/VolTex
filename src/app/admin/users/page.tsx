@@ -485,13 +485,13 @@ export default function AdminUsersPage() {
                     The volunteer profile record will be deleted.
                   </li>
                   <li>
-                    <strong>{userToDelete.referralCount} ticket claim(s)</strong> submitted by this user will be deleted immediately.
+                    <strong>{userToDelete.referralCount} ticket claim(s)</strong> submitted by or credited to this user will be deleted immediately.
                   </li>
                   <li>
                     Any points earned on the live leaderboard will be removed.
                   </li>
                   <li>
-                    Volunteers with active buyer leads, referral touches, or conversion claims cannot be deleted until those attribution records are resolved or reassigned.
+                    All associated buyer leads, referral touches, and converted ticket claims will be permanently removed.
                   </li>
                 </ul>
               </div>
